@@ -1,7 +1,14 @@
 const app = require('./src/app');
-const PORT = 3000;
+const PORT = 6125;
 
-app.listen(PORT, () => {
-    console.log(`🚀 Servidor rodando na porta ${PORT}`);
-    console.log(`📄 Documentação modular disponível em http://localhost:${PORT}/api-docs`);
-});
+const initDatabase = require('./src/database/initDatabase');
+
+const start = async () => {
+  await initDatabase();
+
+  app.listen(PORT, () => {
+    console.log('🚀 Servidor rodando');
+  });
+};
+
+start();
