@@ -38,6 +38,10 @@ router.get('/', usuarioController.listarUsuarios);
  *               senha:
  *                 type: string
  *                 description: Nova senha (armazenada como hash bcrypt)
+ *               data_nascimento:
+ *                 type: string
+ *                 format: date
+ *                 description: Data de nascimento no formato YYYY-MM-DD
  *     responses:
  *       '200':
  *         description: Usuário atualizado com sucesso

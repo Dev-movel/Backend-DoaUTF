@@ -2,7 +2,7 @@ const pool = require('../config/db');
 
 const pessoa = require('./schemas/pessoa');
 const usuario = require('./schemas/usuario');
-const administrador = require('./schemas/usuario');
+const administrador = require('./schemas/administrador');
 
 const initDatabase = async () => {
   try {

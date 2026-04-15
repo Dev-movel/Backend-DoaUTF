@@ -5,7 +5,7 @@ const SALT_ROUNDS = 10;
 
 const listarUsuarios = async (req, res) => {
     try {
-        const result = await pool.query('SELECT id, nome, email FROM usuarios ORDER BY id ASC');
+        const result = await pool.query('SELECT id, nome, email, data_nascimento FROM pessoa ORDER BY id ASC');
         res.status(200).json(result.rows);
     } catch (error) {
         console.error(error);
@@ -15,24 +15,25 @@ const listarUsuarios = async (req, res) => {
 
 const atualizarUsuario = async (req, res) => {
     const { id } = req.params;
-    const { nome, email, senha } = req.body;
+    const { nome, email, senha, data_nascimento } = req.body;
 
     if (email && !email.endsWith('@alunos.utfpr.edu.br')) {
         return res.status(400).json({ erro: 'O email deve ser do domínio @alunos.utfpr.edu.br' });
     }
 
     try {
-        const { rows } = await pool.query('SELECT * FROM usuarios WHERE id = $1', [id]);
+        const { rows } = await pool.query('SELECT * FROM pessoa WHERE id = $1', [id]);
         if (rows.length === 0) return res.status(404).json({ erro: 'Usuário não encontrado' });
 
         const atual = rows[0];
-        const novoNome  = nome  ?? atual.nome;
-        const novoEmail = email ?? atual.email;
-        const novaSenha = senha ? await bcrypt.hash(senha, SALT_ROUNDS) : atual.senha;
+        const novoNome           = nome           ?? atual.nome;
+        const novoEmail          = email          ?? atual.email;
+        const novaSenha          = senha          ? await bcrypt.hash(senha, SALT_ROUNDS) : atual.senha;
+        const novaDataNascimento = data_nascimento !== undefined ? data_nascimento : atual.data_nascimento;
 
         const result = await pool.query(
-            'UPDATE usuarios SET nome = $1, email = $2, senha = $3 WHERE id = $4 RETURNING id, nome, email',
-            [novoNome, novoEmail, novaSenha, id]
+            'UPDATE pessoa SET nome = $1, email = $2, senha = $3, data_nascimento = $4 WHERE id = $5 RETURNING id, nome, email, data_nascimento',
+            [novoNome, novoEmail, novaSenha, novaDataNascimento, id]
         );
         res.json(result.rows[0]);
     } catch (error) {

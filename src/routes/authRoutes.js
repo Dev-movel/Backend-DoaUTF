@@ -26,6 +26,10 @@ const authController = require('../controllers/authController');
  *               senha:
  *                 type: string
  *                 description: Senha do usuário (armazenada como hash bcrypt)
+ *               data_nascimento:
+ *                 type: string
+ *                 format: date
+ *                 description: Data de nascimento no formato YYYY-MM-DD (opcional)
  *     responses:
  *       '201':
  *         description: Usuário cadastrado com sucesso
