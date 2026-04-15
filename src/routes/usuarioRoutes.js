@@ -15,11 +15,16 @@ router.get('/', usuarioController.listarUsuarios);
 
 /**
  * @swagger
- * /usuarios:
- *   post:
- *     summary: Cadastra um novo usuário
+ * /usuarios/{id}:
+ *   patch:
+ *     summary: Atualiza parcialmente o perfil de um usuário
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
  *     requestBody:
- *       required: true
  *       content:
  *         application/json:
  *           schema:
@@ -29,10 +34,18 @@ router.get('/', usuarioController.listarUsuarios);
  *                 type: string
  *               email:
  *                 type: string
+ *                 description: Deve ser do domínio @alunos.utfpr.edu.br
+ *               senha:
+ *                 type: string
+ *                 description: Nova senha (armazenada como hash bcrypt)
  *     responses:
- *       '201':
- *         description: Usuário criado com sucesso
+ *       '200':
+ *         description: Usuário atualizado com sucesso
+ *       '400':
+ *         description: E-mail fora do domínio institucional
+ *       '404':
+ *         description: Usuário não encontrado
  */
-router.post('/', usuarioController.criarUsuario);
+router.patch('/:id', usuarioController.atualizarUsuario);
 
 module.exports = router;
