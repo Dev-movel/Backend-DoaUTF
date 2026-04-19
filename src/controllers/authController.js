@@ -208,7 +208,7 @@ const forgotPassword = async (req, res) => {
             [userId, tokenHash, expiresAt]
         );
 
-        const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${rawToken}`;
+        const resetLink = `${process.env.FRONTEND_URL}/#/reset-password?token=${rawToken}`;
 
         const { sendPasswordReset } = require('../config/mailer');
 
