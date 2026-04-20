@@ -3,6 +3,7 @@ const pool = require('../config/db');
 const pessoa = require('./schemas/pessoa');
 const usuario = require('./schemas/usuario');
 const administrador = require('./schemas/administrador');
+const refreshToken = require('./schemas/refreshToken');
 
 const initDatabase = async () => {
   try {
@@ -16,6 +17,7 @@ const initDatabase = async () => {
     await pool.query(pessoa);
     await pool.query(usuario);
     await pool.query(administrador);
+    await pool.query(refreshToken);
 
     console.log('🚀 Todas as tabelas foram criadas/verificadas');
 
