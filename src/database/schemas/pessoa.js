@@ -1,0 +1,10 @@
+module.exports = `
+CREATE TABLE IF NOT EXISTS pessoa (
+  id SERIAL PRIMARY KEY,
+  nome VARCHAR(100) NOT NULL,
+  email VARCHAR(100) UNIQUE NOT NULL,
+  senha TEXT NOT NULL,
+  data_nascimento DATE,
+  criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+`;

@@ -1,4 +1,7 @@
 const swaggerJsdoc = require('swagger-jsdoc');
+require('dotenv').config();
+
+const PORT = process.env.PORT || 3000;
 
 const swaggerOptions = {
   definition: {
@@ -10,10 +13,20 @@ const swaggerOptions = {
     },
     servers: [
       {
-        url: 'http://localhost:3000',
+        url: `http://localhost:${PORT}`,
         description: 'Servidor Local',
       },
     ],
+    components: {
+      securitySchemes: {
+        BearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          description: 'Token JWT para autenticação. Obtenha-o pelo endpoint /auth/login',
+        },
+      },
+    },
   },
   apis: ['./src/routes/*.js'], 
 };
