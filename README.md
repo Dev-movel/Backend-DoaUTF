@@ -1,6 +1,6 @@
 Markdown
 
-# 🚀 API de Usuários: Node.js + PostgreSQL + Docker
+# 🚀 API: Node.js + PostgreSQL + Docker
 
 Bem-vindo ao repositório da nossa primeira API RESTful modular! Este projeto foi desenvolvido para demonstrar na prática como construir um servidor backend estruturado, conectar a um banco de dados relacional e documentar os *endpoints* de forma profissional.
 
