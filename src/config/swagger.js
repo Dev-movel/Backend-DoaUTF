@@ -7,9 +7,9 @@ const swaggerOptions = {
   definition: {
     openapi: '3.0.0', 
     info: {
-      title: 'API de Usuários',
-      version: '1.0.0',
-      description: 'Documentação Exemplo Backend',
+      title: 'DoaUTF API',
+      version: '1.0.2',
+      description: `API RESTful para o projeto **DoaUTF** — plataforma de conexão entre doadores e receptores de itens da UTFPR.`
     },
     servers: [
       {

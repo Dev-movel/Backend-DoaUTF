@@ -7,6 +7,7 @@ const usuarioController = require('../controllers/usuarioController');
  * /usuarios:
  *   get:
  *     summary: Lista todos os usuários cadastrados
+ *     tags: [Usuários]
  *     responses:
  *       '200':
  *         description: Lista de usuários
@@ -18,6 +19,7 @@ router.get('/', usuarioController.listarUsuarios);
  * /usuarios/{id}:
  *   patch:
  *     summary: Atualiza parcialmente o perfil de um usuário
+ *     tags: [Usuários]
  *     parameters:
  *       - in: path
  *         name: id
