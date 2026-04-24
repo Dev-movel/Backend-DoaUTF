@@ -27,18 +27,56 @@ const register = async (req, res) => {
         return res.status(400).json({ erro: 'O email deve ser do domínio @alunos.utfpr.edu.br' });
     }
 
-    const existente = await pool.query('SELECT id FROM pessoa WHERE email = $1', [email]);
+    // Verifica se email já existe (verificado ou não)
+    const existente = await pool.query(
+        'SELECT id, is_verified FROM pessoa WHERE email = $1',
+        [email]
+    );
     if (existente.rowCount > 0) {
-        return res.status(400).json({ erro: 'E-mail já cadastrado' });
+        const usuario = existente.rows[0];
+        if (usuario.is_verified) {
+            return res.status(400).json({ erro: 'E-mail já cadastrado' });
+        }
+        // Usuário não verificado existe - pode reenviar código
+        return res.status(400).json({ 
+            erro: 'E-mail já cadastrado. Verifique seu e-mail para confirmar sua conta ou solicite um novo código.' 
+        });
     }
 
     try {
         const hash = await bcrypt.hash(senha, SALT_ROUNDS);
+        
+        // Cria usuário com is_verified = false
         const result = await pool.query(
-            'INSERT INTO pessoa (nome, email, senha, data_nascimento) VALUES ($1, $2, $3, $4) RETURNING id, nome, email, data_nascimento',
+            'INSERT INTO pessoa (nome, email, senha, data_nascimento, is_verified) VALUES ($1, $2, $3, $4, FALSE) RETURNING id, nome, email',
             [nome, email, hash, data_nascimento ?? null]
         );
-        res.status(201).json(result.rows[0]);
+        
+        const userId = result.rows[0].id;
+        
+        // Gera código de 6 dígitos
+        const codigo = crypto.randomInt(100000, 999999).toString();
+        const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutos
+        
+        // Salva código no banco
+        await pool.query(
+            'INSERT INTO email_verification (pessoa_id, codigo, expires_at) VALUES ($1, $2, $3)',
+            [userId, codigo, expiresAt]
+        );
+
+        // Envia e-mail (fire-and-forget - não bloqueia resposta)
+        const { sendVerificationCode } = require('../config/mailer');
+        sendVerificationCode(email, codigo).catch(err => {
+            console.error(`Falha ao enviar código de verificação para ${email}:`, err.message);
+        });
+
+        console.log(`Código de verificação gerado para ${email}: ${codigo}`);
+
+        res.status(201).json({ 
+            mensagem: 'Usuário cadastrado. Verifique seu e-mail institucional para obter o código de acesso.',
+            requireVerification: true,
+            expiresIn: 900
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ erro: 'Erro ao cadastrar usuário' });
@@ -64,7 +102,7 @@ const login = async (req, res) => {
 
     try {
         const result = await pool.query(
-            'SELECT id, senha FROM pessoa WHERE email = $1',
+            'SELECT id, senha, is_verified FROM pessoa WHERE email = $1',
             [email]
         );
 
@@ -73,6 +111,14 @@ const login = async (req, res) => {
         }
 
         const user = result.rows[0];
+
+        // Verifica se o e-mail foi verificado
+        if (!user.is_verified) {
+            return res.status(403).json({ 
+                erro: 'E-mail não verificado. Verifique seu e-mail institucional ou solicite um novo código.',
+                requireVerification: true
+            });
+        }
 
         if (!user.senha) {
             console.error(`Usuário ${email} não tem senha definida no banco`);
@@ -264,6 +310,142 @@ const resetPassword = async (req, res) => {
     }
 };
 
+/**
+ * Verifica o código de e-mail e libera o acesso do usuário.
+ * POST /auth/verify-email
+ */
+const verifyEmail = async (req, res) => {
+    const { email, codigo } = req.body;
+
+    if (!email || !codigo) {
+        return res.status(400).json({ erro: 'E-mail e código são obrigatórios' });
+    }
+
+    try {
+        // Busca usuário pelo email
+        const userResult = await pool.query(
+            'SELECT id, is_verified FROM pessoa WHERE email = $1',
+            [email]
+        );
+
+        if (userResult.rowCount === 0) {
+            return res.status(404).json({ erro: 'Usuário não encontrado' });
+        }
+
+        const user = userResult.rows[0];
+
+        if (user.is_verified) {
+            return res.status(400).json({ erro: 'E-mail já verificado. Faça login normalmente.' });
+        }
+
+        // Busca código de verificação válido
+        const codeResult = await pool.query(
+            `SELECT id FROM email_verification 
+             WHERE pessoa_id = $1 AND codigo = $2 AND expires_at > NOW()`,
+            [user.id, codigo]
+        );
+
+        if (codeResult.rowCount === 0) {
+            return res.status(400).json({ erro: 'Código inválido ou expirado' });
+        }
+
+        // Marca usuário como verificado
+        await pool.query(
+            'UPDATE pessoa SET is_verified = TRUE WHERE id = $1',
+            [user.id]
+        );
+
+        // Remove código usado
+        await pool.query(
+            'DELETE FROM email_verification WHERE pessoa_id = $1',
+            [user.id]
+        );
+
+        // Gera tokens de acesso
+        const { accessToken, refreshToken } = generateTokens(user.id);
+
+        const refreshHash = await bcrypt.hash(refreshToken, SALT_ROUNDS);
+        await pool.query(
+            `INSERT INTO refresh_token (pessoa_id, token_hash, expires_at)
+             VALUES ($1, $2, NOW() + INTERVAL '30 days')`,
+            [user.id, refreshHash]
+        );
+
+        console.log(`E-mail verificado para: ${email}`);
+        return res.status(200).json({ 
+            accessToken, 
+            refreshToken,
+            mensagem: 'E-mail verificado com sucesso!' 
+        });
+    } catch (error) {
+        console.error('Erro na verificação de e-mail:', error);
+        res.status(500).json({ erro: 'Erro ao verificar e-mail' });
+    }
+};
+
+/**
+ * Reenvia o código de verificação para o e-mail do usuário.
+ * POST /auth/resend-verification
+ */
+const resendVerificationCode = async (req, res) => {
+    const { email } = req.body;
+
+    if (!email) {
+        return res.status(400).json({ erro: 'E-mail é obrigatório' });
+    }
+
+    try {
+        // Busca usuário não verificado
+        const userResult = await pool.query(
+            'SELECT id, is_verified FROM pessoa WHERE email = $1',
+            [email]
+        );
+
+        if (userResult.rowCount === 0) {
+            return res.status(404).json({ erro: 'Nenhum cadastro pendente para este e-mail' });
+        }
+
+        const user = userResult.rows[0];
+
+        if (user.is_verified) {
+            return res.status(400).json({ erro: 'Este e-mail já está verificado. Faça login normalmente.' });
+        }
+
+        const userId = user.id;
+
+        // Remove códigos antigos
+        await pool.query(
+            'DELETE FROM email_verification WHERE pessoa_id = $1',
+            [userId]
+        );
+
+        // Gera novo código
+        const novoCodigo = crypto.randomInt(100000, 999999).toString();
+        const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+        // Salva novo código
+        await pool.query(
+            'INSERT INTO email_verification (pessoa_id, codigo, expires_at) VALUES ($1, $2, $3)',
+            [userId, novoCodigo, expiresAt]
+        );
+
+        // Envia e-mail
+        const { sendVerificationCode } = require('../config/mailer');
+        sendVerificationCode(email, novoCodigo).catch(err => {
+            console.error(`Falha ao reenviar código para ${email}:`, err.message);
+        });
+
+        console.log(`Novo código de verificação reenviado para ${email}`);
+        return res.status(200).json({ 
+            mensagem: 'Novo código enviado para seu e-mail',
+            expiresIn: 900
+        });
+    } catch (error) {
+        console.error('Erro ao reenviar código:', error);
+        res.status(500).json({ erro: 'Erro ao reenviar código de verificação' });
+    }
+};
+
 module.exports = {
     register,
     login,
@@ -271,4 +453,6 @@ module.exports = {
     refresh,
     forgotPassword,
     resetPassword,
+    verifyEmail,
+    resendVerificationCode,
 };

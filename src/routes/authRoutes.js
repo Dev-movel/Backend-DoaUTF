@@ -43,6 +43,68 @@ router.post('/register', authController.register);
 
 /**
  * @swagger
+ * /auth/verify-email:
+ *   post:
+ *     summary: Verifica o código de 6 dígitos e libera o acesso do usuário
+ *     tags: [Autenticação]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - codigo
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 description: E-mail institucional cadastrado
+ *                 example: alexjunior.2023@alunos.utfpr.edu.br
+ *               codigo:
+ *                 type: string
+ *                 description: Código de 6 dígitos recebido por e-mail
+ *                 example: "000000"
+ *     responses:
+ *       '200':
+ *         description: E-mail verificado com sucesso. Retorna tokens de acesso.
+ *       '400':
+ *         description: Código inválido ou expirado.
+ *       '404':
+ *         description: Usuário não encontrado.
+ */
+router.post('/verify-email', authController.verifyEmail);
+
+/**
+ * @swagger
+ * /auth/resend-verification:
+ *   post:
+ *     summary: Reenvia o código de verificação para o e-mail do usuário
+ *     tags: [Autenticação]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 description: E-mail institucional cadastrado
+ *     responses:
+ *       '200':
+ *         description: Novo código enviado.
+ *       '400':
+ *         description: E-mail já verificado.
+ *       '404':
+ *         description: Nenhum cadastro pendente.
+ */
+router.post('/resend-verification', authController.resendVerificationCode);
+
+/**
+ * @swagger
  * /auth/login:
  *   post:
  *     summary: Realiza o login do usuário e retorna um token JWT
