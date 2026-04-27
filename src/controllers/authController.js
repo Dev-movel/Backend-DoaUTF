@@ -2,6 +2,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const pool = require('../config/db');
+const { validatePasswordComplexity } = require('../utils/validators');
 
 const SALT_ROUNDS = 10;
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -25,6 +26,12 @@ const register = async (req, res) => {
 
     if (!email.endsWith('@alunos.utfpr.edu.br')) {
         return res.status(400).json({ erro: 'O email deve ser do domínio @alunos.utfpr.edu.br' });
+    }
+
+    if (!validatePasswordComplexity(senha)) {
+        return res.status(422).json({ 
+            erro: 'A senha deve conter pelo menos 8 caracteres e incluir 3 dos seguintes: maiúsculas, minúsculas, números ou caracteres especiais.' 
+        });
     }
 
     const existente = await pool.query('SELECT id FROM pessoa WHERE email = $1', [email]);
@@ -229,6 +236,12 @@ const resetPassword = async (req, res) => {
 
     if (!token || !novaSenha) {
         return res.status(400).json({ erro: 'Token e nova senha são obrigatórios' });
+    }
+
+    if (!validatePasswordComplexity(novaSenha)) {
+        return res.status(422).json({ 
+            erro: 'A nova senha deve conter pelo menos 8 caracteres e incluir 3 dos seguintes: maiúsculas, minúsculas, números ou caracteres especiais.' 
+        });
     }
 
     try {
