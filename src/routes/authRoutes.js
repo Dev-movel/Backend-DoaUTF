@@ -28,7 +28,8 @@ const authMiddleware = require('../middlewares/authMiddleware');
  *                 description: Deve ser do domínio @alunos.utfpr.edu.br
  *               senha:
  *                 type: string
- *                 description: Senha do usuário (armazenada como hash bcrypt)
+ *                 description: Senha do usuário (Mínimo 8 caracteres e 3 das 4 regras de complexidade OWASP)
+ *                 example: "MinhaSenha123!"
  *               data_nascimento:
  *                 type: string
  *                 format: date
@@ -38,6 +39,8 @@ const authMiddleware = require('../middlewares/authMiddleware');
  *         description: Usuário cadastrado com sucesso
  *       '400':
  *         description: E-mail fora do domínio institucional ou já cadastrado
+ *       '422':
+ *         description: Senha não atende aos requisitos de complexidade.
  */
 router.post('/register', authController.register);
 
@@ -245,7 +248,7 @@ router.post('/forgot-password', authController.forgotPassword);
  *                 example: "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
  *               novaSenha:
  *                 type: string
- *                 description: Nova senha para o usuário
+ *                 description: Nova senha (Mínimo 8 caracteres e 3 das 4 regras de complexidade OWASP)
  *                 example: "novaSenha123!"
  *     responses:
  *       '200':
@@ -261,6 +264,8 @@ router.post('/forgot-password', authController.forgotPassword);
  *                   example: "Senha redefinida com sucesso"
  *       '400':
  *         description: Token e nova senha são obrigatórios, ou token é inválido/expirado.
+ *       '422':
+ *         description: Nova senha não atende aos requisitos de complexidade.
  *       '500':
  *         description: Erro interno no servidor.
  */
