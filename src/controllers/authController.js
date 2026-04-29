@@ -64,15 +64,19 @@ const login = async (req, res) => {
 
     try {
         const result = await pool.query(
-            'SELECT id, senha FROM pessoa WHERE email = $1',
-            [email]
-        );
+        `SELECT p.id, p.senha, a.id as admin_id, a.nivel 
+        FROM pessoa p 
+        LEFT JOIN administrador a ON p.id = a.pessoa_id 
+        WHERE p.email = $1`,
+        [email]
+);
 
         if (result.rowCount === 0) {
             return res.status(401).json({ erro: INVALID_MSG });
         }
 
         const user = result.rows[0];
+        const isAdmin = user.admin_id !== null; 
 
         if (!user.senha) {
             console.error(`Usuário ${email} não tem senha definida no banco`);
@@ -95,7 +99,7 @@ const login = async (req, res) => {
         );
 
         console.log(`Login bem-sucedido para: ${email}`);
-        return res.status(200).json({ accessToken, refreshToken });
+        return res.status(200).json({ accessToken, refreshToken, isAdmin: isAdmin, nivel: user.nivel });
     } catch (error) {
         console.error('Erro no login:', error);
         res.status(500).json({ erro: 'Erro ao realizar login' });

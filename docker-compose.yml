@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_USER:  vic
       POSTGRES_PASSWORD: admin
-      POSTGRES_DB: teste_db
+      POSTGRES_DB: doautf_db
     ports:
       - "6123:5432"
     volumes:

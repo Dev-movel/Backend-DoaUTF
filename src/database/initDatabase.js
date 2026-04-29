@@ -22,7 +22,7 @@ const initDatabase = async () => {
     console.log('🚀 Todas as tabelas foram criadas/verificadas');
 
   } catch (error) {
-    console.error('❌ Erro no initDatabase:', error.message);
+    console.error('❌ Erro no initDatabase:', error);
   }
 };
 
