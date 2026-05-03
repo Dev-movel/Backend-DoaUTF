@@ -298,4 +298,50 @@ router.post('/reset-password', authController.resetPassword);
  */
 router.post('/logout', authMiddleware, authController.logout);
 
+/**
+ * @swagger
+ * /auth/change-password:
+ *   patch:
+ *     summary: Altera a senha do usuário autenticado
+ *     tags: [Autenticação]
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - senhaAtual
+ *               - novaSenha
+ *             properties:
+ *               senhaAtual:
+ *                 type: string
+ *                 description: Senha atual do usuário
+ *                 example: "SenhaAtual123!"
+ *               novaSenha:
+ *                 type: string
+ *                 description: Nova senha (Mínimo 8 caracteres e 3 das 4 regras de complexidade OWASP)
+ *                 example: "NovaSenha456!"
+ *     responses:
+ *       '200':
+ *         description: Senha alterada com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 mensagem:
+ *                   type: string
+ *                   example: "Senha alterada com sucesso"
+ *       '400':
+ *         description: Senha atual incorreta
+ *       '401':
+ *         description: Token ausente ou inválido
+ *       '422':
+ *         description: Nova senha não atende aos requisitos de complexidade
+ */
+router.patch('/change-password', authMiddleware, authController.changePassword);
+
 module.exports = router;
