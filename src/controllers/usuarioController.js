@@ -5,7 +5,7 @@ const SALT_ROUNDS = 10;
 
 const listarUsuarios = async (req, res) => {
     try {
-        const result = await pool.query('SELECT id, nome, email, data_nascimento FROM pessoa ORDER BY id ASC');
+        const result = await pool.query('SELECT id, nome, email, data_nascimento, bloqueado FROM pessoa ORDER BY id ASC');
         res.status(200).json(result.rows);
     } catch (error) {
         console.error(error);
@@ -15,7 +15,7 @@ const listarUsuarios = async (req, res) => {
 
 const atualizarUsuario = async (req, res) => {
     const { id } = req.params;
-    const { nome, email, senha, data_nascimento } = req.body;
+    const { nome, email, senha, data_nascimento, bloqueado } = req.body;
 
     if (email && !email.endsWith('@alunos.utfpr.edu.br')) {
         return res.status(400).json({ erro: 'O email deve ser do domínio @alunos.utfpr.edu.br' });
@@ -29,11 +29,12 @@ const atualizarUsuario = async (req, res) => {
         const novoNome           = nome           ?? atual.nome;
         const novoEmail          = email          ?? atual.email;
         const novaSenha          = senha          ? await bcrypt.hash(senha, SALT_ROUNDS) : atual.senha;
-        const novaDataNascimento = data_nascimento !== undefined ? data_nascimento : atual.data_nascimento;
+        const novaDataNascimento = data_nascimento !== undefined ? data_nascimento : atual.data_nascimento;        
+        const novoBloqueado      = bloqueado !== undefined ? bloqueado : atual.bloqueado;
 
         const result = await pool.query(
-            'UPDATE pessoa SET nome = $1, email = $2, senha = $3, data_nascimento = $4 WHERE id = $5 RETURNING id, nome, email, data_nascimento',
-            [novoNome, novoEmail, novaSenha, novaDataNascimento, id]
+            'UPDATE pessoa SET nome = $1, email = $2, senha = $3, data_nascimento = $4, bloqueado = $5 WHERE id = $6 RETURNING id, nome, email, data_nascimento, bloqueado',
+            [novoNome, novoEmail, novaSenha, novaDataNascimento, novoBloqueado, id]
         );
         res.json(result.rows[0]);
     } catch (error) {
