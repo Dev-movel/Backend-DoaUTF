@@ -28,24 +28,22 @@ const register = async (req, res) => {
         return res.status(400).json({ erro: 'O email deve ser do domínio @alunos.utfpr.edu.br' });
     }
 
-    // Verifica se email já existe (verificado ou não)
-    const existente = await pool.query(
-        'SELECT id, is_verified FROM pessoa WHERE email = $1',
-        [email]
-    );
     if (!validatePasswordComplexity(senha)) {
         return res.status(422).json({ 
             erro: 'A senha deve conter pelo menos 8 caracteres e incluir 3 dos seguintes: maiúsculas, minúsculas, números ou caracteres especiais.' 
         });
     }
 
-    const existente = await pool.query('SELECT id FROM pessoa WHERE email = $1', [email]);
+    const existente = await pool.query(
+        'SELECT id, is_verified FROM pessoa WHERE email = $1',
+        [email]
+    );
+
     if (existente.rowCount > 0) {
         const usuario = existente.rows[0];
         if (usuario.is_verified) {
             return res.status(400).json({ erro: 'E-mail já cadastrado' });
         }
-        // Usuário não verificado existe - pode reenviar código
         return res.status(400).json({ 
             erro: 'E-mail já cadastrado. Verifique seu e-mail para confirmar sua conta ou solicite um novo código.' 
         });
@@ -54,7 +52,6 @@ const register = async (req, res) => {
     try {
         const hash = await bcrypt.hash(senha, SALT_ROUNDS);
         
-        // Cria usuário com is_verified = false
         const result = await pool.query(
             'INSERT INTO pessoa (nome, email, senha, data_nascimento, is_verified) VALUES ($1, $2, $3, $4, FALSE) RETURNING id, nome, email',
             [nome, email, hash, data_nascimento ?? null]
@@ -62,17 +59,14 @@ const register = async (req, res) => {
         
         const userId = result.rows[0].id;
         
-        // Gera código de 6 dígitos
         const codigo = crypto.randomInt(100000, 999999).toString();
-        const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutos
+        const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
         
-        // Salva código no banco
         await pool.query(
             'INSERT INTO email_verification (pessoa_id, codigo, expires_at) VALUES ($1, $2, $3)',
             [userId, codigo, expiresAt]
         );
 
-        // Envia e-mail (fire-and-forget - não bloqueia resposta)
         const { sendVerificationCode } = require('../config/mailer');
         sendVerificationCode(email, codigo).catch(err => {
             console.error(`Falha ao enviar código de verificação para ${email}:`, err.message);
@@ -120,7 +114,6 @@ const login = async (req, res) => {
 
         const user = result.rows[0];
 
-        // Verifica se o e-mail foi verificado
         if (!user.is_verified) {
             return res.status(403).json({ 
                 erro: 'E-mail não verificado. Verifique seu e-mail institucional ou solicite um novo código.',
@@ -324,10 +317,6 @@ const resetPassword = async (req, res) => {
     }
 };
 
-/**
- * Verifica o código de e-mail e libera o acesso do usuário.
- * POST /auth/verify-email
- */
 const verifyEmail = async (req, res) => {
     const { email, codigo } = req.body;
 
@@ -336,7 +325,6 @@ const verifyEmail = async (req, res) => {
     }
 
     try {
-        // Busca usuário pelo email
         const userResult = await pool.query(
             'SELECT id, is_verified FROM pessoa WHERE email = $1',
             [email]
@@ -352,7 +340,6 @@ const verifyEmail = async (req, res) => {
             return res.status(400).json({ erro: 'E-mail já verificado. Faça login normalmente.' });
         }
 
-        // Busca código de verificação válido
         const codeResult = await pool.query(
             `SELECT id FROM email_verification 
              WHERE pessoa_id = $1 AND codigo = $2 AND expires_at > NOW()`,
@@ -363,7 +350,6 @@ const verifyEmail = async (req, res) => {
             return res.status(400).json({ erro: 'Código inválido ou expirado' });
         }
 
-        // Marca usuário como verificado
         await pool.query(
             'UPDATE pessoa SET is_verified = TRUE WHERE id = $1',
             [user.id]
@@ -375,7 +361,6 @@ const verifyEmail = async (req, res) => {
             [user.id]
         );
 
-        // Gera tokens de acesso
         const { accessToken, refreshToken } = generateTokens(user.id);
 
         const refreshHash = await bcrypt.hash(refreshToken, SALT_ROUNDS);
@@ -397,10 +382,6 @@ const verifyEmail = async (req, res) => {
     }
 };
 
-/**
- * Reenvia o código de verificação para o e-mail do usuário.
- * POST /auth/resend-verification
- */
 const resendVerificationCode = async (req, res) => {
     const { email } = req.body;
 
@@ -409,7 +390,6 @@ const resendVerificationCode = async (req, res) => {
     }
 
     try {
-        // Busca usuário não verificado
         const userResult = await pool.query(
             'SELECT id, is_verified FROM pessoa WHERE email = $1',
             [email]
@@ -427,23 +407,19 @@ const resendVerificationCode = async (req, res) => {
 
         const userId = user.id;
 
-        // Remove códigos antigos
         await pool.query(
             'DELETE FROM email_verification WHERE pessoa_id = $1',
             [userId]
         );
 
-        // Gera novo código
         const novoCodigo = crypto.randomInt(100000, 999999).toString();
         const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
-        // Salva novo código
         await pool.query(
             'INSERT INTO email_verification (pessoa_id, codigo, expires_at) VALUES ($1, $2, $3)',
             [userId, novoCodigo, expiresAt]
         );
 
-        // Envia e-mail
         const { sendVerificationCode } = require('../config/mailer');
         sendVerificationCode(email, novoCodigo).catch(err => {
             console.error(`Falha ao reenviar código para ${email}:`, err.message);
@@ -460,6 +436,27 @@ const resendVerificationCode = async (req, res) => {
     }
 };
 
+const changePassword = async (req, res) => {
+    const userId = req.user.sub;
+    const { senhaAtual, novaSenha } = req.body;
+
+    try {
+        const { rows } = await pool.query('SELECT senha FROM pessoa WHERE id = $1', [userId]);
+        const passMatch = await bcrypt.compare(senhaAtual, rows[0].senha);
+
+        if (!passMatch) return res.status(401).json({ erro: 'Senha atual incorreta' });
+        
+        const hash = await bcrypt.hash(novaSenha, 10);
+        await pool.query('UPDATE pessoa SET senha = $1 WHERE id = $2', [hash, userId]);
+        
+        await pool.query('DELETE FROM refresh_token WHERE pessoa_id = $1', [userId]);
+
+        res.json({ mensagem: 'Senha alterada com sucesso' });
+    } catch (error) {
+        res.status(500).json({ erro: 'Erro ao alterar senha' });
+    }
+};
+
 module.exports = {
     register,
     login,
@@ -469,4 +466,5 @@ module.exports = {
     resetPassword,
     verifyEmail,
     resendVerificationCode,
+    changePassword,
 };

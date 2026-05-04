@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const usuarioController = require('../controllers/usuarioController');
+const authMiddleware = require('../middlewares/authMiddleware');
 
 /**
  * @swagger
@@ -16,42 +17,126 @@ router.get('/', usuarioController.listarUsuarios);
 
 /**
  * @swagger
- * /usuarios/{id}:
- *   patch:
- *     summary: Atualiza parcialmente o perfil de um usuário
+ * /usuarios/me:
+ *   get:
+ *     summary: Retorna o perfil do usuário autenticado
  *     tags: [Usuários]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       '200':
+ *         description: Dados do perfil do usuário (nunca expõe a senha)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: integer
+ *                 nome:
+ *                   type: string
+ *                 email:
+ *                   type: string
+ *                 whatsapp:
+ *                   type: string
+ *                 data_nascimento:
+ *                   type: string
+ *                   format: date
+ *                 endereco:
+ *                   type: object
+ *                   properties:
+ *                     rua:
+ *                       type: string
+ *                     numero:
+ *                       type: string
+ *                     bairro:
+ *                       type: string
+ *                     cidade:
+ *                       type: string
+ *                 created_at:
+ *                   type: string
+ *                   format: date-time
+ *       '401':
+ *         description: Não autorizado (Token ausente ou inválido)
+ *       '404':
+ *         description: Usuário não encontrado
+ */
+router.get('/me', authMiddleware, usuarioController.getMe);
+
+/**
+ * @swagger
+ * /usuarios/me:
+ *   patch:
+ *     summary: Atualiza parcialmente o perfil do usuário autenticado
+ *     tags: [Usuários]
+ *     security:
+ *       - BearerAuth: []
  *     requestBody:
+ *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             description: Apenas os campos enviados serão atualizados (partial update)
  *             properties:
  *               nome:
  *                 type: string
- *               email:
+ *               whatsapp:
  *                 type: string
- *                 description: Deve ser do domínio @alunos.utfpr.edu.br
- *               senha:
- *                 type: string
- *                 description: Nova senha (armazenada como hash bcrypt)
  *               data_nascimento:
  *                 type: string
  *                 format: date
- *                 description: Data de nascimento no formato YYYY-MM-DD
+ *               endereco:
+ *                 type: object
+ *                 properties:
+ *                   rua:
+ *                     type: string
+ *                   numero:
+ *                     type: string
+ *                   bairro:
+ *                     type: string
+ *                   cidade:
+ *                     type: string
  *     responses:
  *       '200':
- *         description: Usuário atualizado com sucesso
- *       '400':
- *         description: E-mail fora do domínio institucional
- *       '404':
- *         description: Usuário não encontrado
+ *         description: Perfil atualizado com sucesso
+ *       '401':
+ *         description: Não autorizado (Token ausente ou inválido)
+ *       '422':
+ *         description: Nenhum campo válido foi enviado para atualização
  */
-router.patch('/:id', usuarioController.atualizarUsuario);
+router.patch('/me', authMiddleware, usuarioController.updateMe);
+
+/**
+ * @swagger
+ * /usuarios/me/donations:
+ *   get:
+ *     summary: Lista as doações realizadas pelo usuário autenticado
+ *     tags: [Usuários]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       '200':
+ *         description: Lista de doações do usuário (ordenada pelas mais recentes)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: integer
+ *                   titulo:
+ *                     type: string
+ *                   foto_url:
+ *                     type: string
+ *                   status:
+ *                     type: string
+ *                     description: Status atual da doação
+ *       '401':
+ *         description: Não autorizado (Token ausente ou inválido)
+ */
+router.get('/me/donations', authMiddleware, usuarioController.getMyDonations);
 
 module.exports = router;

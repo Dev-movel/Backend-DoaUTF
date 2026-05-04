@@ -5,6 +5,12 @@ CREATE TABLE IF NOT EXISTS pessoa (
   email VARCHAR(100) UNIQUE NOT NULL,
   senha TEXT NOT NULL,
   data_nascimento DATE,
-  criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  whatsapp VARCHAR(20),
+  rua VARCHAR(100),
+  numero VARCHAR(10),
+  bairro VARCHAR(100),
+  cidade VARCHAR(100),
+  is_verified BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 `;
