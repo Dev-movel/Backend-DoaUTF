@@ -28,7 +28,8 @@ const authMiddleware = require('../middlewares/authMiddleware');
  *                 description: Deve ser do domínio @alunos.utfpr.edu.br
  *               senha:
  *                 type: string
- *                 description: Senha do usuário (armazenada como hash bcrypt)
+ *                 description: Senha do usuário (Mínimo 8 caracteres e 3 das 4 regras de complexidade OWASP)
+ *                 example: "MinhaSenha123!"
  *               data_nascimento:
  *                 type: string
  *                 format: date
@@ -38,8 +39,72 @@ const authMiddleware = require('../middlewares/authMiddleware');
  *         description: Usuário cadastrado com sucesso
  *       '400':
  *         description: E-mail fora do domínio institucional ou já cadastrado
+ *       '422':
+ *         description: Senha não atende aos requisitos de complexidade.
  */
 router.post('/register', authController.register);
+
+/**
+ * @swagger
+ * /auth/verify-email:
+ *   post:
+ *     summary: Verifica o código de 6 dígitos e libera o acesso do usuário
+ *     tags: [Autenticação]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - codigo
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 description: E-mail institucional cadastrado
+ *                 example: alexjunior.2023@alunos.utfpr.edu.br
+ *               codigo:
+ *                 type: string
+ *                 description: Código de 6 dígitos recebido por e-mail
+ *                 example: "000000"
+ *     responses:
+ *       '200':
+ *         description: E-mail verificado com sucesso. Retorna tokens de acesso.
+ *       '400':
+ *         description: Código inválido ou expirado.
+ *       '404':
+ *         description: Usuário não encontrado.
+ */
+router.post('/verify-email', authController.verifyEmail);
+
+/**
+ * @swagger
+ * /auth/resend-verification:
+ *   post:
+ *     summary: Reenvia o código de verificação para o e-mail do usuário
+ *     tags: [Autenticação]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 description: E-mail institucional cadastrado
+ *     responses:
+ *       '200':
+ *         description: Novo código enviado.
+ *       '400':
+ *         description: E-mail já verificado.
+ *       '404':
+ *         description: Nenhum cadastro pendente.
+ */
+router.post('/resend-verification', authController.resendVerificationCode);
 
 /**
  * @swagger
@@ -183,7 +248,7 @@ router.post('/forgot-password', authController.forgotPassword);
  *                 example: "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
  *               novaSenha:
  *                 type: string
- *                 description: Nova senha para o usuário
+ *                 description: Nova senha (Mínimo 8 caracteres e 3 das 4 regras de complexidade OWASP)
  *                 example: "novaSenha123!"
  *     responses:
  *       '200':
@@ -199,6 +264,8 @@ router.post('/forgot-password', authController.forgotPassword);
  *                   example: "Senha redefinida com sucesso"
  *       '400':
  *         description: Token e nova senha são obrigatórios, ou token é inválido/expirado.
+ *       '422':
+ *         description: Nova senha não atende aos requisitos de complexidade.
  *       '500':
  *         description: Erro interno no servidor.
  */
@@ -230,5 +297,51 @@ router.post('/reset-password', authController.resetPassword);
  *         description: Erro interno no servidor.
  */
 router.post('/logout', authMiddleware, authController.logout);
+
+/**
+ * @swagger
+ * /auth/change-password:
+ *   patch:
+ *     summary: Altera a senha do usuário autenticado
+ *     tags: [Autenticação]
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - senhaAtual
+ *               - novaSenha
+ *             properties:
+ *               senhaAtual:
+ *                 type: string
+ *                 description: Senha atual do usuário
+ *                 example: "SenhaAtual123!"
+ *               novaSenha:
+ *                 type: string
+ *                 description: Nova senha (Mínimo 8 caracteres e 3 das 4 regras de complexidade OWASP)
+ *                 example: "NovaSenha456!"
+ *     responses:
+ *       '200':
+ *         description: Senha alterada com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 mensagem:
+ *                   type: string
+ *                   example: "Senha alterada com sucesso"
+ *       '400':
+ *         description: Senha atual incorreta
+ *       '401':
+ *         description: Token ausente ou inválido
+ *       '422':
+ *         description: Nova senha não atende aos requisitos de complexidade
+ */
+router.patch('/change-password', authMiddleware, authController.changePassword);
 
 module.exports = router;
