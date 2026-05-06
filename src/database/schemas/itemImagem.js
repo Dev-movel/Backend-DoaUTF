@@ -1,0 +1,8 @@
+module.exports = `
+CREATE TABLE IF NOT EXISTS item_imagem (
+  id SERIAL PRIMARY KEY,
+  item_id INTEGER NOT NULL REFERENCES item(id) ON DELETE CASCADE,
+  caminho VARCHAR(500) NOT NULL,
+  criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+`;
