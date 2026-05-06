@@ -103,15 +103,12 @@ const login = async (req, res) => {
     }
 
     try {
+        // Query unificada: busca dados do usuário e verifica se é admin em uma só chamada
         const result = await pool.query(
-        `SELECT p.id, p.senha, a.id as admin_id, a.nivel 
-        FROM pessoa p 
-        LEFT JOIN administrador a ON p.id = a.pessoa_id 
-        WHERE p.email = $1`,
-        [email]
-        );
-
-            'SELECT id, senha, is_verified FROM pessoa WHERE email = $1',
+            `SELECT p.id, p.senha, p.is_verified, a.id as admin_id, a.nivel 
+             FROM pessoa p 
+             LEFT JOIN administrador a ON p.id = a.pessoa_id 
+             WHERE p.email = $1`,
             [email]
         );
 
@@ -120,7 +117,7 @@ const login = async (req, res) => {
         }
 
         const user = result.rows[0];
-        const isAdmin = user.admin_id !== null; 
+        const isAdmin = user.admin_id !== null;
 
         if (!user.is_verified) {
             return res.status(403).json({ 
@@ -150,7 +147,7 @@ const login = async (req, res) => {
         );
 
         console.log(`Login bem-sucedido para: ${email}`);
-        return res.status(200).json({ accessToken, refreshToken, isAdmin: isAdmin, nivel: user.nivel });
+        return res.status(200).json({ accessToken, refreshToken, isAdmin, nivel: user.nivel });
     } catch (error) {
         console.error('Erro no login:', error);
         res.status(500).json({ erro: 'Erro ao realizar login' });
@@ -363,7 +360,6 @@ const verifyEmail = async (req, res) => {
             [user.id]
         );
 
-        // Remove código usado
         await pool.query(
             'DELETE FROM email_verification WHERE pessoa_id = $1',
             [user.id]
@@ -454,7 +450,7 @@ const changePassword = async (req, res) => {
 
         if (!passMatch) return res.status(401).json({ erro: 'Senha atual incorreta' });
         
-        const hash = await bcrypt.hash(novaSenha, 10);
+        const hash = await bcrypt.hash(novaSenha, SALT_ROUNDS);
         await pool.query('UPDATE pessoa SET senha = $1 WHERE id = $2', [hash, userId]);
         
         await pool.query('DELETE FROM refresh_token WHERE pessoa_id = $1', [userId]);
