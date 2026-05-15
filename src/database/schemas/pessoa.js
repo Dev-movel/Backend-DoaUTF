@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS pessoa (
   bairro VARCHAR(100),
   cidade VARCHAR(100),
   is_verified BOOLEAN DEFAULT FALSE,
+  bloqueado BOOLEAN DEFAULT false,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 `;
