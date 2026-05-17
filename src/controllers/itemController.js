@@ -236,6 +236,86 @@ const editarItem = async (req, res) => {
     }
 };
 
+const STATUS_VALIDOS = ['disponivel', 'doado', 'excluido', 'todos'];
+
+const listarItens = async (req, res) => {
+    const { categoria, busca, pagina = 1, status = 'disponivel' } = req.query;
+
+    if (!STATUS_VALIDOS.includes(status)) {
+        return res.status(400).json({
+            erro: `status inválido. Valores aceitos: ${STATUS_VALIDOS.join(', ')}`,
+        });
+    }
+
+    const limite = 9;
+    const offset = (Math.max(1, parseInt(pagina) || 1) - 1) * limite;
+
+    const condicoes = [];
+    if (status !== 'todos') {
+        condicoes.push(`i.status = '${status}'`);
+    }
+    const params = [];
+
+    if (categoria) {
+        params.push(`%${categoria}%`);
+        condicoes.push(`c.nome ILIKE $${params.length}`);
+    }
+
+    if (busca) {
+        params.push(`%${busca}%`);
+        condicoes.push(`(i.titulo ILIKE $${params.length} OR i.descricao ILIKE $${params.length})`);
+    }
+
+    params.push(limite);
+    const limiteParam = params.length;
+    params.push(offset);
+    const offsetParam = params.length;
+
+    try {
+        const result = await pool.query(
+            `SELECT
+                i.id,
+                i.titulo,
+                i.status,
+                i.descricao,
+                i.estado_conservacao,
+                i.local_retirada,
+                i.criado_em,
+                c.nome AS categoria_nome,
+                p.id AS doador_id,
+                p.nome AS doador_nome,
+                ARRAY(SELECT ii.caminho FROM item_imagem ii WHERE ii.item_id = i.id ORDER BY ii.id) AS fotos_caminhos
+             FROM item i
+             JOIN categoria c ON c.id = i.categoria_id
+             JOIN pessoa p ON p.id = i.pessoa_id
+             WHERE ${condicoes.length > 0 ? condicoes.join(' AND ') : 'TRUE'}
+             ORDER BY i.criado_em DESC
+             LIMIT $${limiteParam} OFFSET $${offsetParam}`,
+            params
+        );
+
+        const baseUrl = `${req.protocol}://${req.get('host')}`;
+
+        const itens = result.rows.map((row) => ({
+            id: row.id,
+            titulo: row.titulo,
+            fotos: (row.fotos_caminhos || []).map((caminho) => `${baseUrl}/${caminho}`),
+            status: row.status,
+            descricao: row.descricao,
+            estado_conservacao: row.estado_conservacao,
+            local_retirada: row.local_retirada,
+            criado_em: row.criado_em,
+            categoria: { nome: row.categoria_nome },
+            doador: { id: row.doador_id, nome: row.doador_nome },
+        }));
+
+        return res.status(200).json(itens);
+    } catch (error) {
+        console.error('Erro ao listar itens:', error);
+        res.status(500).json({ erro: 'Erro ao listar itens' });
+    }
+};
+
 const removerItem = async (req, res) => {
     const pessoaId = req.user.sub;
     const { id } = req.params;
@@ -269,4 +349,4 @@ const removerItem = async (req, res) => {
     }
 };
 
-module.exports = { cadastrarItem, buscarItem, editarItem, removerItem, LOCAIS_RETIRADA, ESTADOS_CONSERVACAO };
+module.exports = { cadastrarItem, listarItens, buscarItem, editarItem, removerItem, LOCAIS_RETIRADA, ESTADOS_CONSERVACAO };
