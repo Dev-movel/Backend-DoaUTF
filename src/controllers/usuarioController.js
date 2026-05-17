@@ -184,10 +184,16 @@ const getMyDonations = async (req, res) => {
 
   try {
     const { rows } = await pool.query(
-      `SELECT id, titulo, foto_url, status
-       FROM item
-       WHERE pessoa_id = $1
-       ORDER BY criado_em DESC`,
+      `SELECT i.id,
+              i.titulo,
+              COALESCE(
+                (SELECT caminho FROM item_imagem WHERE item_id = i.id ORDER BY id LIMIT 1),
+                NULL
+              ) AS foto_url,
+              i.status
+       FROM item i
+       WHERE i.pessoa_id = $1
+       ORDER BY i.criado_em DESC`,
       [userId]
     );
 
