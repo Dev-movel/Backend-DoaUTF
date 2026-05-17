@@ -142,20 +142,20 @@ router.get('/me/donations', authMiddleware, usuarioController.getMyDonations);
 /**
  * @swagger
  * /usuarios/{id}:
- * patch:
- * summary: Atualiza um usuário por ID (Usado por Administradores)
- * tags: [Usuários]
- * parameters:
- * - in: path
- * name: id
- * required: true
- * schema:
- * type: integer
- * responses:
- * '200':
- * description: Usuário atualizado com sucesso
- * '404':
- * description: Usuário não encontrado
+ *   patch:
+ *     summary: Atualiza um usuário por ID (Usado por Administradores)
+ *     tags: [Usuários]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       '200':
+ *         description: Usuário atualizado com sucesso
+ *       '404':
+ *         description: Usuário não encontrado
  */
 router.patch('/:id', usuarioController.atualizarUsuario);
 module.exports = router;
