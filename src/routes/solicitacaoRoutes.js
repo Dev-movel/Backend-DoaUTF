@@ -154,4 +154,74 @@ router.get('/minhas', authMiddleware, solicitacaoController.minhasSolicitacoes);
  */
 router.delete('/:id', authMiddleware, solicitacaoController.cancelarSolicitacao);
 
+/**
+ * @swagger
+ * /solicitacoes/{id}/aceitar:
+ *   patch:
+ *     summary: Aceita uma solicitação de interesse, reserva o item e cria o agendamento inicial
+ *     tags: [Solicitações]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID da solicitação a ser aceita
+ *     responses:
+ *       '200':
+ *         description: Interessado escolhido com sucesso e agendamento inicial criado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 mensagem:
+ *                   type: string
+ *                   example: Interessado escolhido com sucesso. Item reservado!
+ *                 agendamento:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       example: 1
+ *                     item_id:
+ *                       type: integer
+ *                       example: 5
+ *                     doador_id:
+ *                       type: integer
+ *                       example: 10
+ *                     receptor_id:
+ *                       type: integer
+ *                       example: 15
+ *                     data_hora:
+ *                       type: string
+ *                       format: date-time
+ *                       nullable: true
+ *                     status:
+ *                       type: string
+ *                       example: pendente
+ *                     confirmacao_doador:
+ *                       type: boolean
+ *                       example: false
+ *                     confirmacao_receptor:
+ *                       type: boolean
+ *                       example: false
+ *                     created_at:
+ *                       type: string
+ *                       format: date-time
+ *       '401':
+ *         description: Token ausente ou inválido
+ *       '403':
+ *         description: Acesso negado — apenas o doador do item pode aceitar a solicitação
+ *       '404':
+ *         description: Solicitação não encontrada
+ *       '422':
+ *         description: O item vinculado a esta solicitação não está mais disponível
+ *       '500':
+ *         description: Erro interno no servidor ao processar a escolha
+ */
+router.patch('/:id/aceitar', authMiddleware, solicitacaoController.aceitarSolicitacao);
+
 module.exports = router;
