@@ -5,6 +5,7 @@ const authMiddleware = require('../middlewares/authMiddleware');
 const itemController = require('../controllers/itemController');
 const solicitacaoController = require('../controllers/solicitacaoController');
 const upload = require('../config/upload');
+const agendamentoRoutes = require('./agendamentoRoutes');
 
 const handleUpload = (req, res, next) => {
     upload.array('imagens', 5)(req, res, (err) => {
@@ -411,5 +412,7 @@ router.get('/:id/solicitacoes', authMiddleware, solicitacaoController.solicitaco
  *               caminho:
  *                 type: string
  */
+
+router.use('/:id/agendamento', agendamentoRoutes);
 
 module.exports = router;

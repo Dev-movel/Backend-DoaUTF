@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const jwt = require('jsonwebtoken');
 const pool = require('../config/db');
 
 const ESTADOS_CONSERVACAO = ['novo', 'usado', 'precisa_de_reparo'];
@@ -249,12 +250,42 @@ const listarItens = async (req, res) => {
 
     const limite = 9;
     const offset = (Math.max(1, parseInt(pagina) || 1) - 1) * limite;
-
-    const condicoes = [];
-    if (status !== 'todos') {
-        condicoes.push(`i.status = '${status}'`);
-    }
     const params = [];
+    const condicoes = [];
+
+    let usuarioLogadoId = null;
+    const authHeader = req.headers.authorization;
+
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.split(' ')[1];
+        try {
+            const payload = jwt.verify(token, process.env.JWT_SECRET);
+            usuarioLogadoId = payload.sub;
+        } catch (_) {
+            usuarioLogadoId = null;
+        }
+    }
+
+    if (status !== 'todos') {
+        if (status === 'disponivel' && usuarioLogadoId) {
+            params.push(usuarioLogadoId);
+            const userParam = `$${params.length}`;
+            condicoes.push(`(
+                i.status = 'disponivel'
+                OR (
+                    i.status IN ('reservado')
+                    AND (
+                        i.pessoa_id = ${userParam}
+                        OR EXISTS(
+                            SELECT 1 FROM solicitacao s WHERE s.item_id = i.id AND s.solicitante_pessoa_id = ${userParam}
+                        )
+                    )
+                )
+            )`);
+        } else {
+            condicoes.push(`i.status = '${status}'`);
+        }
+    }
 
     if (categoria) {
         params.push(`%${categoria}%`);
