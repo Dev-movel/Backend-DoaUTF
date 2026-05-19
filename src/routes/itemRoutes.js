@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const authMiddleware = require('../middlewares/authMiddleware');
 const itemController = require('../controllers/itemController');
+const solicitacaoController = require('../controllers/solicitacaoController');
 const upload = require('../config/upload');
 
 const handleUpload = (req, res, next) => {
@@ -89,6 +90,82 @@ const handleUpload = (req, res, next) => {
  *         description: Erro interno no servidor
  */
 router.post('/', authMiddleware, handleUpload, itemController.cadastrarItem);
+
+/**
+ * @swagger
+ * /itens:
+ *   get:
+ *     summary: Lista itens disponíveis para doação
+ *     tags: [Itens]
+ *     parameters:
+ *       - in: query
+ *         name: categoria
+ *         schema:
+ *           type: string
+ *         description: Filtrar pelo nome da categoria (ex. Móveis)
+ *       - in: query
+ *         name: busca
+ *         schema:
+ *           type: string
+ *         description: Busca por texto no título ou descrição
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [disponivel, doado, todos]
+ *           default: disponivel
+ *         description: Filtrar por status do item. 'todos' retorna independente do status.
+ *       - in: query
+ *         name: pagina
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Número da página (9 itens por página)
+ *     responses:
+ *       '200':
+ *         description: Lista de itens disponíveis
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: integer
+ *                   titulo:
+ *                     type: string
+ *                   fotos:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *                     description: URLs de todas as fotos do item
+ *                   status:
+ *                     type: string
+ *                     example: disponivel
+ *                   descricao:
+ *                     type: string
+ *                   local_retirada:
+ *                     type: string
+ *                   created_at:
+ *                     type: string
+ *                     format: date-time
+ *                   categoria:
+ *                     type: object
+ *                     properties:
+ *                       nome:
+ *                         type: string
+ *                   doador:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       nome:
+ *                         type: string
+ *       '500':
+ *         description: Erro interno no servidor
+ */
+router.get('/', itemController.listarItens);
 
 /**
  * @swagger
@@ -247,6 +324,57 @@ router.put('/:id', authMiddleware, handleUpload, itemController.editarItem);
  *         description: Erro interno no servidor
  */
 router.delete('/:id', authMiddleware, itemController.removerItem);
+
+/**
+ * @swagger
+ * /itens/{id}/solicitacoes:
+ *   get:
+ *     summary: Lista as solicitações de um item (visível apenas ao doador)
+ *     tags: [Itens]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID do item
+ *     responses:
+ *       '200':
+ *         description: Lista de solicitações recebidas pelo item
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: integer
+ *                   status:
+ *                     type: string
+ *                     example: pendente
+ *                   criado_em:
+ *                     type: string
+ *                     format: date-time
+ *                   solicitante:
+ *                     type: object
+ *                     properties:
+ *                       nome:
+ *                         type: string
+ *                       whatsapp:
+ *                         type: string
+ *       '401':
+ *         description: Token ausente ou inválido
+ *       '403':
+ *         description: Acesso negado — você não é o dono deste item
+ *       '404':
+ *         description: Item não encontrado
+ *       '500':
+ *         description: Erro interno no servidor
+ */
+router.get('/:id/solicitacoes', authMiddleware, solicitacaoController.solicitacoesDoItem);
 
 /**
  * @swagger
