@@ -185,9 +185,9 @@ const getMyDonations = async (req, res) => {
   try {
     const { rows } = await pool.query(
       `SELECT id, titulo, foto_url, status
-       FROM doacao
-       WHERE doador_id = $1
-       ORDER BY created_at DESC`,
+       FROM item
+       WHERE pessoa_id = $1
+       ORDER BY criado_em DESC`,
       [userId]
     );
 
