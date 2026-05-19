@@ -184,10 +184,16 @@ const getMyDonations = async (req, res) => {
 
   try {
     const { rows } = await pool.query(
-      `SELECT id, titulo, foto_url, status
-       FROM item
-       WHERE pessoa_id = $1
-       ORDER BY criado_em DESC`,
+      `SELECT i.id,
+              i.titulo,
+              COALESCE(
+                (SELECT caminho FROM item_imagem WHERE item_id = i.id ORDER BY id LIMIT 1),
+                NULL
+              ) AS foto_url,
+              i.status
+       FROM item i
+       WHERE i.pessoa_id = $1
+       ORDER BY i.criado_em DESC`,
       [userId]
     );
 
@@ -198,10 +204,38 @@ const getMyDonations = async (req, res) => {
   }
 };
 
+// ================= ITENS RECEBIDOS PELO USUÁRIO =================
+const getReceivedDonations = async (req, res) => {
+  const userId = req.user.sub;
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT i.id,
+              i.titulo,
+              COALESCE(
+                (SELECT caminho FROM item_imagem WHERE item_id = i.id ORDER BY id LIMIT 1),
+                NULL
+              ) AS foto_url,
+              i.status
+       FROM item i
+       JOIN solicitacao s ON s.item_id = i.id
+       WHERE s.solicitante_pessoa_id = $1 AND s.status = 'aceito'
+       ORDER BY i.criado_em DESC`,
+      [userId]
+    );
+
+    res.json(rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ erro: 'Erro ao buscar itens recebidos' });
+  }
+};
+
 module.exports = {
   listarUsuarios,
   atualizarUsuario,
   getMe,
   updateMe,
   getMyDonations,
+  getReceivedDonations,
 };
