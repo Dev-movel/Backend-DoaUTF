@@ -219,10 +219,43 @@ const obterPorItem = async (req, res) => {
     }
 };
 
+const listarMeusAgendamentos = async (req, res) => {
+    const userId = getUsuarioLogadoId(req);
+
+    try {
+        const result = await pool.query(
+            `SELECT a.id, a.item_id, a.doador_id, a.receptor_id, a.data_hora, a.status, a.created_at,
+                            i.titulo AS item_titulo
+             FROM agendamento a
+             JOIN item i ON i.id = a.item_id
+             WHERE a.doador_id = $1 OR a.receptor_id = $1
+             ORDER BY a.created_at DESC`,
+            [userId]
+        );
+
+        const agendamentos = result.rows.map(row => ({
+            id: row.id,
+            item_id: row.item_id,
+            item_titulo: row.item_titulo,
+            doador_id: row.doador_id,
+            receptor_id: row.receptor_id,
+            data_hora: row.data_hora,
+            status: row.status,
+            created_at: row.created_at,
+        }));
+
+        return res.status(200).json(agendamentos);
+    } catch (error) {
+        console.error('Erro ao listar agendamentos do usuário:', error);
+        return res.status(500).json({ erro: 'Erro interno ao listar agendamentos.' });
+    }
+};
+
 module.exports = {
     sugerirHorario,
     proporDisponibilidade,
     confirmarAgendamento,
     concluirAgendamento,
-    obterPorItem
+    obterPorItem,
+    listarMeusAgendamentos
 };

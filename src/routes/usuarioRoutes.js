@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const usuarioController = require('../controllers/usuarioController');
+const agendamentoController = require('../controllers/agendamentoController');
 const authMiddleware = require('../middlewares/authMiddleware');
 
 /**
@@ -138,6 +139,51 @@ router.patch('/me', authMiddleware, usuarioController.updateMe);
  *         description: Não autorizado (Token ausente ou inválido)
  */
 router.get('/me/donations', authMiddleware, usuarioController.getMyDonations);
+
+/**
+ * @swagger
+ * /usuarios/me/received:
+ *   get:
+ *     summary: Lista os itens recebidos pelo usuário autenticado
+ *     tags: [Usuários]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       '200':
+ *         description: Lista de itens recebidos (ordenada pelas mais recentes)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: integer
+ *                   titulo:
+ *                     type: string
+ *                   foto_url:
+ *                     type: string
+ *                   status:
+ *                     type: string
+ *       '401':
+ *         description: Não autorizado (Token ausente ou inválido)
+ */
+router.get('/me/received', authMiddleware, usuarioController.getReceivedDonations);
+
+/**
+ * @swagger
+ * /usuarios/me/agendamentos:
+ *   get:
+ *     summary: Lista agendamentos vinculados ao usuário (doador ou receptor)
+ *     tags: [Usuários]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       '200':
+ *         description: Lista de agendamentos
+ */
+router.get('/me/agendamentos', authMiddleware, agendamentoController.listarMeusAgendamentos);
 
 /**
  * @swagger
