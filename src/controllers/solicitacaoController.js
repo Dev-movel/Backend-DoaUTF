@@ -170,4 +170,72 @@ const cancelarSolicitacao = async (req, res) => {
     }
 };
 
-module.exports = { criarSolicitacao, minhasSolicitacoes, solicitacoesDoItem, cancelarSolicitacao };
+const aceitarSolicitacao = async (req, res) => {
+    const { id } = req.params; 
+    const usuarioLogadoId = req.user.sub;
+
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        const solicitacaoRes = await client.query(`
+            SELECT s.id, s.item_id, s.solicitante_pessoa_id, s.status as solicitacao_status,
+                   i.pessoa_id as doador_id, i.status as item_status
+            FROM solicitacao s
+            JOIN item i ON s.item_id = i.id
+            WHERE s.id = $1
+        `, [id]);
+
+        if (solicitacaoRes.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ erro: 'Solicitação não encontrada.' });
+        }
+
+        const dados = solicitacaoRes.rows[0];
+
+        if (Number(dados.doador_id) !== Number(usuarioLogadoId)) {
+            await client.query('ROLLBACK');
+            return res.status(403).json({ erro: 'Apenas o doador do item pode aceitar uma solicitação.' });
+        }
+
+        if (dados.item_status !== 'disponivel') {
+            await client.query('ROLLBACK');
+            return res.status(422).json({ erro: 'Este item não está mais disponível.' });
+        }
+
+        await client.query(`
+            UPDATE item SET status = 'reservado' WHERE id = $1
+        `, [dados.item_id]);
+
+        await client.query(`
+            UPDATE solicitacao SET status = 'aceito' WHERE id = $1
+        `, [id]);
+        
+        await client.query(`
+            UPDATE solicitacao SET status = 'recusado' WHERE item_id = $1 AND id != $2
+        `, [dados.item_id, id]);
+
+        const agendamentoRes = await client.query(`
+            INSERT INTO agendamento (item_id, doador_id, receptor_id)
+            VALUES ($1, $2, $3)
+            RETURNING *
+        `, [dados.item_id, dados.doador_id, dados.solicitante_pessoa_id]);
+
+        await client.query('COMMIT');
+
+        return res.status(200).json({
+            mensagem: 'Interessado escolhido com sucesso. Item reservado!',
+            agendamento: agendamentoRes.rows[0]
+        });
+
+    } catch (erro) {
+        await client.query('ROLLBACK');
+        console.error('Erro ao aceitar solicitação:', erro);
+        return res.status(500).json({ erro: 'Erro interno ao processar a escolha.' });
+    } finally {
+        client.release();
+    }
+};
+
+module.exports = { criarSolicitacao, minhasSolicitacoes, solicitacoesDoItem, cancelarSolicitacao, aceitarSolicitacao };
