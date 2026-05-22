@@ -116,6 +116,13 @@ router.patch('/me', authMiddleware, usuarioController.updateMe);
  *     tags: [Usuários]
  *     security:
  *       - BearerAuth: []
+ *     parameters:  
+ *       - in: query
+ *         name: status
+ *         schema: 
+ *           type: string
+ *           enum: [disponivel, reservado, doado]
+ *           description: Filtra doações por status. Se omitido, retorna todos os itens.
  *     responses:
  *       '200':
  *         description: Lista de doações do usuário (ordenada pelas mais recentes)
@@ -135,6 +142,8 @@ router.patch('/me', authMiddleware, usuarioController.updateMe);
  *                   status:
  *                     type: string
  *                     description: Status atual da doação
+ *       '400':
+ *         description: Parâmetro de status inválido
  *       '401':
  *         description: Não autorizado (Token ausente ou inválido)
  */

@@ -181,21 +181,38 @@ const updateMe = async (req, res) => {
 // ================= MINHAS DOAÇÕES =================
 const getMyDonations = async (req, res) => {
   const userId = req.user.sub;
+  const { status } = req.query;
+
+  const statusValidos = ['disponivel', 'reservado', 'doado'];
+
+  if (status && !statusValidos.includes(status)) {
+    return res.status(400).json({
+      erro: `status inválido. Valores aceitos: ${statusValidos.join(', ')}`,
+    });
+  }
 
   try {
-    const { rows } = await pool.query(
-      `SELECT i.id,
-              i.titulo,
-              COALESCE(
-                (SELECT caminho FROM item_imagem WHERE item_id = i.id ORDER BY id LIMIT 1),
-                NULL
-              ) AS foto_url,
-              i.status
-       FROM item i
-       WHERE i.pessoa_id = $1
-       ORDER BY i.criado_em DESC`,
-      [userId]
-    );
+    let queryText = `
+      SELECT i.id,
+             i.titulo,
+             COALESCE(
+               (SELECT caminho FROM item_imagem WHERE item_id = i.id ORDER BY id LIMIT 1),
+               NULL
+             ) AS foto_url,
+             i.status
+      FROM item i
+      WHERE i.pessoa_id = $1
+    `;
+    const queryParams = [userId];
+
+    if (status) {
+      queryParams.push(status);
+      queryText += ` AND i.status = $2`;
+    }
+
+    queryText += ` ORDER BY i.criado_em DESC`;
+
+    const { rows } = await pool.query(queryText, queryParams);
 
     res.json(rows);
   } catch (error) {
