@@ -5,11 +5,18 @@ const SALT_ROUNDS = 10;
 
 // ================= LISTAR TODOS USUÁRIOS =================
 const listarUsuarios = async (req, res) => {
-  try {
-    const result = await pool.query(
-      'SELECT id, nome, email, data_nascimento, bloqueado FROM pessoa ORDER BY id ASC'
-    );
+  const { apenasDenunciados } = req.query;
 
+  try {
+    let queryText = 'SELECT id, nome, email, data_nascimento, bloqueado, denunciado FROM pessoa';
+    
+    if (apenasDenunciados === 'true') {
+      queryText += ' WHERE denunciado = true';
+    }
+
+    queryText += ' ORDER BY id ASC';
+
+    const result = await pool.query(queryText);
     res.status(200).json(result.rows);
   } catch (error) {
     console.error(error);

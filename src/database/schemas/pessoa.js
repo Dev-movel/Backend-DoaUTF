@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS pessoa (
   cidade VARCHAR(100),
   is_verified BOOLEAN DEFAULT FALSE,
   bloqueado BOOLEAN DEFAULT false,
+  denunciado BOOLEAN DEFAULT false,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 `;
