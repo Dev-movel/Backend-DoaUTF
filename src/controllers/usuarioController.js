@@ -27,7 +27,7 @@ const listarUsuarios = async (req, res) => {
 // ================= ATUALIZAR USUÁRIO POR ID (ADMIN) =================
 const atualizarUsuario = async (req, res) => {
   const { id } = req.params;
-  const { nome, email, senha, data_nascimento, bloqueado } = req.body;
+  const { nome, email, senha, data_nascimento, bloqueado, denunciado } = req.body;
   const adminIdLogado = req.user.sub; 
 
   try {
@@ -51,12 +51,11 @@ const atualizarUsuario = async (req, res) => {
     const novoNome = nome ?? atual.nome;
     const novoEmail = email ?? atual.email;
     const novaSenha = senha
-      ? await bcrypt.hash(senha, SALT_ROUNDS)
+      ? await bcrypt.hash(senha, 10)
       : atual.senha;
-    const novaDataNascimento =
-      data_nascimento ?? atual.data_nascimento;
-    const novoBloqueado =
-      bloqueado ?? atual.bloqueado;
+    const novaDataNascimento = data_nascimento ?? atual.data_nascimento;
+    const novoBloqueado = bloqueado ?? atual.bloqueado;
+    const novoDenunciado = denunciado ?? atual.denunciado; 
 
     const result = await pool.query(
       `UPDATE pessoa
@@ -64,22 +63,24 @@ const atualizarUsuario = async (req, res) => {
            email = $2,
            senha = $3,
            data_nascimento = $4,
-           bloqueado = $5
-       WHERE id = $6
-       RETURNING id, nome, email, data_nascimento, bloqueado`,
+           bloqueado = $5,
+           denunciado = $6
+       WHERE id = $7
+       RETURNING id, nome, email, data_nascimento, bloqueado, denunciado`,
       [
         novoNome,
         novoEmail,
         novaSenha,
         novaDataNascimento,
         novoBloqueado,
+        novoDenunciado,
         id,
       ]
     );
 
     res.status(200).json(result.rows[0]);
   } catch (error) {
-    console.error(error);
+    console.error("❌ ERRO NO ATUALIZAR USUARIO:", error);
     res.status(500).json({ erro: 'Erro ao atualizar usuário' });
   }
 };
