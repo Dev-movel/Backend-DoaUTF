@@ -380,4 +380,55 @@ const removerItem = async (req, res) => {
     }
 };
 
-module.exports = { cadastrarItem, listarItens, buscarItem, editarItem, removerItem, LOCAIS_RETIRADA, ESTADOS_CONSERVACAO };
+const listarItensAtivosAdmin = async (req, res) => {
+        try {
+        const result = await pool.query(
+            `SELECT
+                i.id,
+                i.titulo,
+                i.status,
+                i.descricao,
+                i.estado_conservacao,
+                i.local_retirada,
+                i.criado_em,
+                c.nome AS categoria_nome,
+                p.nome AS doador_nome,
+                ARRAY(SELECT ii.caminho FROM item_imagem ii WHERE ii.item_id = i.id ORDER BY ii.id) AS fotos_caminhos
+             FROM item i
+             JOIN categoria c ON c.id = i.categoria_id
+             JOIN pessoa p ON p.id = i.pessoa_id
+             WHERE i.status IN ('disponivel', 'reservado')
+             ORDER BY i.criado_em DESC`
+        );
+
+        const baseUrl = `${req.protocol}://${req.get('host')}`;
+
+        const itens = result.rows.map((row) => ({
+            id: row.id,
+            titulo: row.titulo,
+            status: row.status,
+            descricao: row.descricao,
+            estado_conservacao: row.estado_conservacao,
+            local_retirada: row.local_retirada,
+            created_at: row.criado_em, 
+            nome_doador: row.doador_nome,
+            imagens: (row.fotos_caminhos || []).map((caminho) => `${baseUrl}/${caminho}`),
+        }));
+
+        return res.status(200).json(itens);
+    } catch (error) {
+        console.error('Erro ao listar itens no admin:', error);
+        res.status(500).json({ erro: 'Erro interno ao listar doações ativas.' });
+    }
+};
+
+module.exports = { 
+    cadastrarItem, 
+    listarItens, 
+    buscarItem, 
+    editarItem, 
+    removerItem, 
+    listarItensAtivosAdmin,
+    LOCAIS_RETIRADA, 
+    ESTADOS_CONSERVACAO 
+};

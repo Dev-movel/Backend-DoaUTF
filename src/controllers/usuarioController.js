@@ -28,8 +28,15 @@ const listarUsuarios = async (req, res) => {
 const atualizarUsuario = async (req, res) => {
   const { id } = req.params;
   const { nome, email, senha, data_nascimento, bloqueado } = req.body;
+  const adminIdLogado = req.user.sub; 
 
   try {
+    if (bloqueado === true && parseInt(adminIdLogado) === parseInt(id)) {
+      return res.status(403).json({ 
+        erro: 'Ação negada: Você não pode bloquear a sua própria conta.' 
+      });
+    }
+
     const { rows } = await pool.query(
       'SELECT * FROM pessoa WHERE id = $1',
       [id]
@@ -255,6 +262,33 @@ const getReceivedDonations = async (req, res) => {
   }
 };
 
+// ================= DENUNCIAR USUÁRIO =================
+const denunciarUsuario = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await pool.query(
+      `UPDATE pessoa 
+       SET denunciado = true 
+       WHERE id = $1 
+       RETURNING id, nome, denunciado`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ erro: 'Usuário não encontrado para denúncia.' });
+    }
+
+    res.status(200).json({ 
+      mensagem: 'Usuário denunciado com sucesso.', 
+      usuario: result.rows[0] 
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ erro: 'Erro ao registrar denúncia do usuário.' });
+  }
+};
+
 module.exports = {
   listarUsuarios,
   atualizarUsuario,
@@ -262,4 +296,5 @@ module.exports = {
   updateMe,
   getMyDonations,
   getReceivedDonations,
+  denunciarUsuario,
 };
