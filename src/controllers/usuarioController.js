@@ -5,11 +5,14 @@ const SALT_ROUNDS = 10;
 
 // ================= LISTAR TODOS USUÁRIOS =================
 const listarUsuarios = async (req, res) => {
+  const { apenasDenunciados } = req.query;
+
   try {
     const result = await pool.query(
       'SELECT id, nome, email, data_nascimento FROM pessoa ORDER BY id ASC'
     );
 
+    const result = await pool.query(queryText);
     res.status(200).json(result.rows);
   } catch (error) {
     console.error(error);
@@ -20,9 +23,16 @@ const listarUsuarios = async (req, res) => {
 // ================= ATUALIZAR USUÁRIO POR ID (ADMIN) =================
 const atualizarUsuario = async (req, res) => {
   const { id } = req.params;
-  const { nome, email, senha, data_nascimento, bloqueado } = req.body;
+  const { nome, email, senha, data_nascimento, bloqueado, denunciado } = req.body;
+  const adminIdLogado = req.user.sub; 
 
   try {
+    if (bloqueado === true && parseInt(adminIdLogado) === parseInt(id)) {
+      return res.status(403).json({ 
+        erro: 'Ação negada: Você não pode bloquear a sua própria conta.' 
+      });
+    }
+
     const { rows } = await pool.query(
       'SELECT * FROM pessoa WHERE id = $1',
       [id]
@@ -37,12 +47,11 @@ const atualizarUsuario = async (req, res) => {
     const novoNome = nome ?? atual.nome;
     const novoEmail = email ?? atual.email;
     const novaSenha = senha
-      ? await bcrypt.hash(senha, SALT_ROUNDS)
+      ? await bcrypt.hash(senha, 10)
       : atual.senha;
-    const novaDataNascimento =
-      data_nascimento ?? atual.data_nascimento;
-    const novoBloqueado =
-      bloqueado ?? atual.bloqueado;
+    const novaDataNascimento = data_nascimento ?? atual.data_nascimento;
+    const novoBloqueado = bloqueado ?? atual.bloqueado;
+    const novoDenunciado = denunciado ?? atual.denunciado; 
 
     const result = await pool.query(
       `UPDATE pessoa
@@ -50,22 +59,24 @@ const atualizarUsuario = async (req, res) => {
            email = $2,
            senha = $3,
            data_nascimento = $4,
-           bloqueado = $5
-       WHERE id = $6
-       RETURNING id, nome, email, data_nascimento, bloqueado`,
+           bloqueado = $5,
+           denunciado = $6
+       WHERE id = $7
+       RETURNING id, nome, email, data_nascimento, bloqueado, denunciado`,
       [
         novoNome,
         novoEmail,
         novaSenha,
         novaDataNascimento,
         novoBloqueado,
+        novoDenunciado,
         id,
       ]
     );
 
     res.status(200).json(result.rows[0]);
   } catch (error) {
-    console.error(error);
+    console.error("❌ ERRO NO ATUALIZAR USUARIO:", error);
     res.status(500).json({ erro: 'Erro ao atualizar usuário' });
   }
 };
@@ -248,6 +259,33 @@ const getReceivedDonations = async (req, res) => {
   }
 };
 
+// ================= DENUNCIAR USUÁRIO =================
+const denunciarUsuario = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await pool.query(
+      `UPDATE pessoa 
+       SET denunciado = true 
+       WHERE id = $1 
+       RETURNING id, nome, denunciado`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ erro: 'Usuário não encontrado para denúncia.' });
+    }
+
+    res.status(200).json({ 
+      mensagem: 'Usuário denunciado com sucesso.', 
+      usuario: result.rows[0] 
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ erro: 'Erro ao registrar denúncia do usuário.' });
+  }
+};
+
 module.exports = {
   listarUsuarios,
   atualizarUsuario,
@@ -255,4 +293,5 @@ module.exports = {
   updateMe,
   getMyDonations,
   getReceivedDonations,
+  denunciarUsuario,
 };

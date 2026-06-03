@@ -212,5 +212,25 @@ router.get('/me/agendamentos', authMiddleware, agendamentoController.listarMeusA
  *       '404':
  *         description: Usuário não encontrado
  */
-router.patch('/:id', usuarioController.atualizarUsuario);
+router.patch('/:id', authMiddleware, usuarioController.atualizarUsuario);
+
+/**
+ * @swagger
+ * /usuarios/{id}:
+ *   patch:
+ *     summary: Denuncia um usuário por ID (Usado por Administradores)
+ *     tags: [Usuários]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       '200':
+ *         description: Usuário Denunciado com sucesso
+ *       '404':
+ *         description: Usuário não encontrado
+ */
+router.patch('/:id/denunciar', authMiddleware, usuarioController.denunciarUsuario);
 module.exports = router;

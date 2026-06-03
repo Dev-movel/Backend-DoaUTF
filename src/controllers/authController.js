@@ -98,14 +98,12 @@ const login = async (req, res) => {
     });
 
     if (!email || !passwordToCheck) {
-        console.error('Email ou senha faltando:', { email: !!email, passwordToCheck: !!passwordToCheck });
         return res.status(400).json({ erro: 'Email e senha são obrigatórios' });
     }
 
     try {
-        // Query unificada: busca dados do usuário e verifica se é admin em uma só chamada
         const result = await pool.query(
-            `SELECT p.id, p.senha, p.is_verified, a.id as admin_id, a.nivel 
+            `SELECT p.id, p.senha, p.is_verified, p.bloqueado, a.id as admin_id, a.nivel 
              FROM pessoa p 
              LEFT JOIN administrador a ON p.id = a.pessoa_id 
              WHERE p.email = $1`,
@@ -118,6 +116,13 @@ const login = async (req, res) => {
 
         const user = result.rows[0];
         const isAdmin = user.admin_id !== null;
+
+        if (user.bloqueado === true) {
+            return res.status(403).json({ 
+                erro: 'Sua conta foi bloqueada pelo administrador. Acesso negado.',
+                bloqueado: true
+            });
+        }
 
         if (!user.is_verified) {
             return res.status(403).json({ 
@@ -147,7 +152,14 @@ const login = async (req, res) => {
         );
 
         console.log(`Login bem-sucedido para: ${email}`);
-        return res.status(200).json({ accessToken, refreshToken, isAdmin, nivel: user.nivel });
+        
+        return res.status(200).json({ 
+            accessToken, 
+            refreshToken, 
+            isAdmin, 
+            nivel: user.nivel,
+            bloqueado: false 
+        });
     } catch (error) {
         console.error('Erro no login:', error);
         res.status(500).json({ erro: 'Erro ao realizar login' });
@@ -186,6 +198,11 @@ const refresh = async (req, res) => {
         }
 
         const userId = payload.sub;
+
+        const userCheck = await pool.query('SELECT bloqueado FROM pessoa WHERE id = $1', [userId]);
+        if (userCheck.rowCount === 0 || userCheck.rows[0].bloqueado === true) {
+            return res.status(403).json({ erro: 'Conta bloqueada ou inexistente. Sessão encerrada.' });
+        }
 
         const stored = await pool.query(
             `SELECT id, token_hash FROM refresh_token
