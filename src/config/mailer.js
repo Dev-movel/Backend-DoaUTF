@@ -1,18 +1,40 @@
-const { Resend } = require('resend');
+const nodemailer = require('nodemailer');
 require('dotenv').config();
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// ── Transporter Gmail SMTP ───────────────────────────────────────────────────
+let transporter;
+
+const initTransporter = async () => {
+    transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+            user: process.env.MAIL_USER,
+            pass: process.env.MAIL_PASS, // senha de app gerada no Google
+        },
+    });
+
+    await transporter.verify();
+    console.log('✅ Gmail SMTP pronto para envio');
+};
+
+const getTransporter = () => {
+    if (!transporter) {
+        throw new Error('Transporter não inicializado. Chame initTransporter() no startup.');
+    }
+    return transporter;
+};
+
+// ── Envio de redefinição de senha ────────────────────────────────────────────
 
 /**
- * Envia e-mail de recuperação de senha via Resend (HTTPS, porta 443).
- * Funciona em qualquer rede, incluindo redes universitárias que bloqueiam SMTP.
+ * Envia e-mail de recuperação de senha.
  *
  * @param {string} to - E-mail do destinatário
  * @param {string} resetLink - Link para redefinir a senha
  */
 const sendPasswordReset = async (to, resetLink) => {
-    const { data, error } = await resend.emails.send({
-        from: process.env.MAIL_FROM || 'DoaUTF <onboarding@resend.dev>',
+    const info = await getTransporter().sendMail({
+        from: process.env.MAIL_FROM || 'DoaUTF <seugmail@gmail.com>',
         to,
         subject: 'Redefinição de Senha - DoaUTF',
         text: `Você solicitou a redefinição da sua senha.\n\nAcesse o link abaixo (válido por 1 hora):\n${resetLink}\n\nSe não foi você, ignore este e-mail.`,
@@ -50,25 +72,21 @@ const sendPasswordReset = async (to, resetLink) => {
         `,
     });
 
-    if (error) {
-        console.error('Resend error:', error);
-        throw new Error(`Falha ao enviar e-mail: ${error.message}`);
-    }
-
-    console.log(`E-mail enviado para ${to} — ID: ${data.id}`);
-    return data;
+    console.log(`E-mail enviado para ${to} — ID: ${info.messageId}`);
+    return info;
 };
+
+// ── Envio de código de verificação ──────────────────────────────────────────
 
 /**
  * Envia e-mail com código de verificação de 6 dígitos.
- * Usado no cadastro de novos usuários.
  *
  * @param {string} to - E-mail do destinatário
  * @param {string} code - Código de 6 dígitos
  */
 const sendVerificationCode = async (to, code) => {
-    const { data, error } = await resend.emails.send({
-        from: process.env.MAIL_FROM || 'DoaUTF <onboarding@resend.dev>',
+    const info = await getTransporter().sendMail({
+        from: process.env.MAIL_FROM || 'DoaUTF <seugmail@gmail.com>',
         to,
         subject: 'Confirme seu e-mail da UTFPR - DoaUTF',
         text: `Bem-vindo ao DoaUTF! Seu código de verificação é: ${code}`,
@@ -90,15 +108,8 @@ const sendVerificationCode = async (to, code) => {
         `,
     });
 
-    if (error) {
-        console.error('Resend error (Verification):', error);
-        throw new Error(`Falha ao enviar e-mail: ${error.message}`);
-    }
-
-    console.log(`Código de verificação enviado para ${to} — ID: ${data.id}`);
-    return data;
+    console.log(`Código de verificação enviado para ${to} — ID: ${info.messageId}`);
+    return info;
 };
-
-const initTransporter = async () => {};
 
 module.exports = { sendPasswordReset, sendVerificationCode, initTransporter };

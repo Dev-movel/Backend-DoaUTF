@@ -24,9 +24,9 @@ const generateTokens = (userId) => {
 const register = async (req, res) => {
     const { nome, email, senha, data_nascimento } = req.body;
 
-    if (!email.endsWith('@alunos.utfpr.edu.br')) {
-        return res.status(400).json({ erro: 'O email deve ser do domínio @alunos.utfpr.edu.br' });
-    }
+    // if (!email.endsWith('@alunos.utfpr.edu.br')) {
+    //     return res.status(400).json({ erro: 'O email deve ser do domínio @alunos.utfpr.edu.br' });
+    // }
 
     if (!validatePasswordComplexity(senha)) {
         return res.status(422).json({ 

@@ -7,7 +7,7 @@ const SALT_ROUNDS = 10;
 const listarUsuarios = async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, nome, email, data_nascimento, bloqueado FROM pessoa ORDER BY id ASC'
+      'SELECT id, nome, email, data_nascimento FROM pessoa ORDER BY id ASC'
     );
 
     res.status(200).json(result.rows);
