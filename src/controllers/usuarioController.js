@@ -8,7 +8,7 @@ const listarUsuarios = async (req, res) => {
   const { apenasDenunciados } = req.query;
 
   try {
-    let queryText = 'SELECT id, nome, email, data_nascimento FROM pessoa';
+    let queryText = 'SELECT id, nome, email, data_nascimento, bloqueado, denunciado FROM pessoa';
     
     if (apenasDenunciados === 'true') {
       queryText += ' WHERE denunciado = true';
