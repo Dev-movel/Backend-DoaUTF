@@ -8,9 +8,13 @@ const listarUsuarios = async (req, res) => {
   const { apenasDenunciados } = req.query;
 
   try {
-    const result = await pool.query(
-      'SELECT id, nome, email, data_nascimento FROM pessoa ORDER BY id ASC'
-    );
+    let queryText = 'SELECT id, nome, email, data_nascimento FROM pessoa';
+    
+    if (apenasDenunciados === 'true') {
+      queryText += ' WHERE denunciado = true';
+    }
+    
+    queryText += ' ORDER BY id ASC';
 
     const result = await pool.query(queryText);
     res.status(200).json(result.rows);
