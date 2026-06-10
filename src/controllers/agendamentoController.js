@@ -201,15 +201,22 @@ const concluirAgendamento = async (req, res) => {
 
 const obterPorItem = async (req, res) => {
     const { id } = req.params; 
+    const usuarioLogadoId = getUsuarioLogadoId(req);
 
     try {
         const result = await pool.query(
-            'SELECT * FROM agendamento WHERE item_id = $1',
+            'SELECT * FROM agendamento WHERE item_id = $1 ORDER BY id DESC LIMIT 1',
             [id]
         );
 
         if (result.rowCount === 0) {
             return res.status(404).json({ erro: 'Nenhum agendamento encontrado para este item.' });
+        }
+
+        const agendamento = result.rows[0];
+
+        if (Number(agendamento.doador_id) !== Number(usuarioLogadoId) && Number(agendamento.receptor_id) !== Number(usuarioLogadoId)) {
+            return res.status(403).json({ erro: 'Acesso negado: Você não possui permissão para visualizar este agendamento.' });
         }
 
         return res.status(200).json(result.rows[0]);
@@ -225,9 +232,12 @@ const listarMeusAgendamentos = async (req, res) => {
     try {
         const result = await pool.query(
             `SELECT a.id, a.item_id, a.doador_id, a.receptor_id, a.data_hora, a.status, a.created_at,
-                            i.titulo AS item_titulo
+                    i.titulo AS item_titulo, i.local_retirada AS item_localizacao,
+                    p_doador.nome AS doador_nome, p_receptor.nome AS receptor_nome
              FROM agendamento a
              JOIN item i ON i.id = a.item_id
+             LEFT JOIN pessoa p_doador ON p_doador.id = a.doador_id
+             LEFT JOIN pessoa p_receptor ON p_receptor.id = a.receptor_id
              WHERE a.doador_id = $1 OR a.receptor_id = $1
              ORDER BY a.created_at DESC`,
             [userId]
@@ -239,6 +249,9 @@ const listarMeusAgendamentos = async (req, res) => {
             item_titulo: row.item_titulo,
             doador_id: row.doador_id,
             receptor_id: row.receptor_id,
+            doador_nome: row.doador_nome,
+            receptor_nome: row.receptor_nome,
+            localizacao: row.item_localizacao,
             data_hora: row.data_hora,
             status: row.status,
             created_at: row.created_at,

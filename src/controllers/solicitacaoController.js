@@ -217,8 +217,8 @@ const aceitarSolicitacao = async (req, res) => {
         `, [dados.item_id, id]);
 
         const agendamentoRes = await client.query(`
-            INSERT INTO agendamento (item_id, doador_id, receptor_id)
-            VALUES ($1, $2, $3)
+            INSERT INTO agendamento (item_id, doador_id, receptor_id, status, confirmacao_doador, confirmacao_receptor)
+            VALUES ($1, $2, $3, 'pendente', false, false)
             RETURNING *
         `, [dados.item_id, dados.doador_id, dados.solicitante_pessoa_id]);
 
