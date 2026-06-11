@@ -214,7 +214,23 @@ const getMyDonations = async (req, res) => {
                (SELECT caminho FROM item_imagem WHERE item_id = i.id ORDER BY id LIMIT 1),
                NULL
              ) AS foto_url,
-             i.status
+             i.status,
+             (
+               SELECT COUNT(*)::int 
+               FROM solicitacao s 
+               WHERE s.item_id = i.id AND s.status = 'pendente'
+             ) AS quantidade_solicitacoes_pendentes,
+             (
+               SELECT json_build_object(
+                 'id', a.id,
+                 'status', a.status,
+                 'data_hora', a.data_hora
+               )
+               FROM agendamento a
+               WHERE a.item_id = i.id AND a.status IN ('pendente', 'confirmado')
+               ORDER BY a.id DESC
+               LIMIT 1
+             ) AS agendamento_ativo
       FROM item i
       WHERE i.pessoa_id = $1
     `;

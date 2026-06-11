@@ -142,6 +142,21 @@ router.patch('/me', authMiddleware, usuarioController.updateMe);
  *                   status:
  *                     type: string
  *                     description: Status atual da doação
+ *                   quantidade_solicitacoes_pendentes:
+ *                     type: integer
+ *                     description: Quantidade de solicitações pendentes para este item
+ *                   agendamento_ativo:
+ *                     type: object
+ *                     nullable: true
+ *                     description: Informações sobre o agendamento ativo para este item
+ *                     properties:
+ *                       id:  
+ *                         type: integer
+ *                       status:
+ *                         type: string
+ *                       data_hora:
+ *                         type: string
+ *                         format: date-time
  *       '400':
  *         description: Parâmetro de status inválido
  *       '401':
