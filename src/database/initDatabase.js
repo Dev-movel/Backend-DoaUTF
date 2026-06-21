@@ -10,6 +10,7 @@ const itemImagem = require('./schemas/itemImagem');
 const solicitacao = require('./schemas/solicitacao');
 const agendamento = require('./schemas/agendamento');
 const agendamentoTrigger = require('./schemas/agendamentoTrigger');
+const notificacao = require('./schemas/notificacao');
 
 const initDatabase = async () => {
   try {
@@ -30,6 +31,7 @@ const initDatabase = async () => {
     await pool.query(solicitacao);
     await pool.query(agendamento);
     await pool.query(agendamentoTrigger);
+    await pool.query(notificacao);
 
     console.log('🚀 Todas as tabelas foram criadas/verificadas');
 
