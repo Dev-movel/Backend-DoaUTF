@@ -1,4 +1,5 @@
-const pool = require('../config/db'); 
+const pool = require('../config/db');
+const { notify } = require('../services/notificationService');
 
 const getUsuarioLogadoId = (req) => req.user.sub || req.user.id;
 
@@ -18,8 +19,13 @@ const sugerirHorario = async (req, res) => {
 
     try {
         const agendamentoRes = await pool.query(`
-            SELECT * FROM agendamento 
-            WHERE item_id = $1 AND status = 'pendente'
+            SELECT a.*, i.titulo as item_titulo,
+                   p_doador.nome as doador_nome, p_receptor.nome as receptor_nome
+            FROM agendamento a
+            JOIN item i ON i.id = a.item_id
+            JOIN pessoa p_doador ON p_doador.id = a.doador_id
+            JOIN pessoa p_receptor ON p_receptor.id = a.receptor_id
+            WHERE a.item_id = $1 AND a.status = 'pendente'
         `, [id]);
 
         if (agendamentoRes.rows.length === 0) {
@@ -38,6 +44,13 @@ const sugerirHorario = async (req, res) => {
             WHERE id = $2 
             RETURNING *
         `, [dataSugerida, agendamento.id]);
+
+        notify(
+            agendamento.doador_id,
+            'horario_sugerido',
+            `${agendamento.receptor_nome} sugeriu um horário para retirada de ${agendamento.item_titulo}. Confirme sua disponibilidade.`,
+            { item_id: Number(id), agendamento_id: agendamento.id, item_titulo: agendamento.item_titulo, usuario_nome: agendamento.receptor_nome }
+        );
 
         return res.status(200).json({
             mensagem: 'Horário sugerido com sucesso. Aguardando confirmação do doador.',
@@ -66,8 +79,13 @@ const proporDisponibilidade = async (req, res) => {
 
     try {
         const agendamentoRes = await pool.query(`
-            SELECT * FROM agendamento 
-            WHERE item_id = $1 AND status = 'pendente'
+            SELECT a.*, i.titulo as item_titulo,
+                   p_doador.nome as doador_nome, p_receptor.nome as receptor_nome
+            FROM agendamento a
+            JOIN item i ON i.id = a.item_id
+            JOIN pessoa p_doador ON p_doador.id = a.doador_id
+            JOIN pessoa p_receptor ON p_receptor.id = a.receptor_id
+            WHERE a.item_id = $1 AND a.status = 'pendente'
         `, [id]);
 
         if (agendamentoRes.rows.length === 0) {
@@ -87,6 +105,13 @@ const proporDisponibilidade = async (req, res) => {
             RETURNING *
         `, [dataSugerida, agendamento.id]);
 
+        notify(
+            agendamento.receptor_id,
+            'disponibilidade_proposta',
+            `${agendamento.doador_nome} definiu um horário para ${agendamento.item_titulo}. Confirme para finalizar o agendamento.`,
+            { item_id: Number(id), agendamento_id: agendamento.id, item_titulo: agendamento.item_titulo, usuario_nome: agendamento.doador_nome }
+        );
+
         return res.status(200).json({
             mensagem: 'Disponibilidade definida com sucesso. Aguardando confirmação do receptor.',
             agendamento: updateRes.rows[0]
@@ -104,8 +129,13 @@ const confirmarAgendamento = async (req, res) => {
 
     try {
         const agendamentoRes = await pool.query(`
-            SELECT * FROM agendamento 
-            WHERE item_id = $1 AND status = 'pendente'
+            SELECT a.*, i.titulo as item_titulo,
+                   p_doador.nome as doador_nome, p_receptor.nome as receptor_nome
+            FROM agendamento a
+            JOIN item i ON i.id = a.item_id
+            JOIN pessoa p_doador ON p_doador.id = a.doador_id
+            JOIN pessoa p_receptor ON p_receptor.id = a.receptor_id
+            WHERE a.item_id = $1 AND a.status = 'pendente'
         `, [id]);
 
         if (agendamentoRes.rows.length === 0) {
@@ -133,6 +163,13 @@ const confirmarAgendamento = async (req, res) => {
             RETURNING *
         `, [confirmacaoDoador, confirmacaoReceptor, novoStatus, agendamento.id]);
 
+        if (novoStatus === 'confirmado') {
+            notify(agendamento.doador_id, 'agendamento_confirmado', `Agendamento de ${agendamento.item_titulo} confirmado por ambas as partes!`,
+                { item_id: Number(id), agendamento_id: agendamento.id, item_titulo: agendamento.item_titulo, usuario_nome: agendamento.receptor_nome });
+            notify(agendamento.receptor_id, 'agendamento_confirmado', `Agendamento de ${agendamento.item_titulo} confirmado por ambas as partes!`,
+                { item_id: Number(id), agendamento_id: agendamento.id, item_titulo: agendamento.item_titulo, usuario_nome: agendamento.doador_nome });
+        }
+
         return res.status(200).json({
             mensagem: novoStatus === 'confirmado' ? 'Agendamento confirmado por ambas as partes!' : 'Sua confirmação foi registrada.',
             agendamento: updateRes.rows[0]
@@ -154,8 +191,13 @@ const concluirAgendamento = async (req, res) => {
         await client.query('BEGIN');
 
         const agendamentoRes = await client.query(`
-            SELECT * FROM agendamento 
-            WHERE item_id = $1 AND status = 'confirmado'
+            SELECT a.*, i.titulo as item_titulo,
+                   p_doador.nome as doador_nome, p_receptor.nome as receptor_nome
+            FROM agendamento a
+            JOIN item i ON i.id = a.item_id
+            JOIN pessoa p_doador ON p_doador.id = a.doador_id
+            JOIN pessoa p_receptor ON p_receptor.id = a.receptor_id
+            WHERE a.item_id = $1 AND a.status = 'confirmado'
         `, [id]);
 
         if (agendamentoRes.rows.length === 0) {
@@ -184,6 +226,13 @@ const concluirAgendamento = async (req, res) => {
         );
 
         await client.query('COMMIT');
+
+        notify(
+            agendamento.receptor_id,
+            'agendamento_concluido',
+            `Retirada de ${agendamento.item_titulo} concluída! Aproveite.`,
+            { item_id: Number(id), agendamento_id: agendamento.id, item_titulo: agendamento.item_titulo, usuario_nome: agendamento.doador_nome }
+        );
 
         return res.status(200).json({
             mensagem: 'Entrega confirmada com sucesso! O item foi marcado como doado.',

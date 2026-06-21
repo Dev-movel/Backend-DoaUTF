@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { notify } = require('../services/notificationService');
 
 const criarSolicitacao = async (req, res) => {
     const pessoaId = req.user.sub;
@@ -10,8 +11,11 @@ const criarSolicitacao = async (req, res) => {
 
     try {
         const itemResult = await pool.query(
-            'SELECT id, pessoa_id, status FROM item WHERE id = $1',
-            [item_id]
+            `SELECT i.id, i.pessoa_id, i.status, i.titulo, p.nome AS solicitante_nome
+             FROM item i
+             JOIN pessoa p ON p.id = $2
+             WHERE i.id = $1`,
+            [item_id, pessoaId]
         );
 
         if (itemResult.rowCount === 0) {
@@ -33,6 +37,13 @@ const criarSolicitacao = async (req, res) => {
              VALUES ($1, $2)
              RETURNING id, item_id, status, criado_em`,
             [item_id, pessoaId]
+        );
+
+        notify(
+            item.pessoa_id,
+            'nova_solicitacao',
+            `${item.solicitante_nome} demonstrou interesse no seu ${item.titulo}!`,
+            { item_id: item.id, solicitacao_id: result.rows[0].id, item_titulo: item.titulo, usuario_nome: item.solicitante_nome }
         );
 
         return res.status(201).json(result.rows[0]);
@@ -181,9 +192,12 @@ const aceitarSolicitacao = async (req, res) => {
 
         const solicitacaoRes = await client.query(`
             SELECT s.id, s.item_id, s.solicitante_pessoa_id, s.status as solicitacao_status,
-                   i.pessoa_id as doador_id, i.status as item_status
+                   i.pessoa_id as doador_id, i.status as item_status, i.titulo as item_titulo,
+                   p_doador.nome as doador_nome, p_receptor.nome as receptor_nome
             FROM solicitacao s
             JOIN item i ON s.item_id = i.id
+            JOIN pessoa p_doador ON p_doador.id = i.pessoa_id
+            JOIN pessoa p_receptor ON p_receptor.id = s.solicitante_pessoa_id
             WHERE s.id = $1
         `, [id]);
 
@@ -223,6 +237,28 @@ const aceitarSolicitacao = async (req, res) => {
         `, [dados.item_id, dados.doador_id, dados.solicitante_pessoa_id]);
 
         await client.query('COMMIT');
+
+        notify(
+            dados.solicitante_pessoa_id,
+            'solicitacao_aceita',
+            'Sua solicitação foi aceita! Combine o horário de retirada.',
+            { item_id: dados.item_id, agendamento_id: agendamentoRes.rows[0].id, item_titulo: dados.item_titulo, usuario_nome: dados.doador_nome }
+        );
+
+        pool.query(
+            `SELECT solicitante_pessoa_id FROM solicitacao
+             WHERE item_id = $1 AND status = 'recusado'`,
+            [dados.item_id]
+        ).then(recusados => {
+            recusados.rows.forEach(row => {
+                notify(
+                    row.solicitante_pessoa_id,
+                    'solicitacao_recusada',
+                    'Infelizmente sua solicitação para este item não foi selecionada.',
+                    { item_id: dados.item_id, item_titulo: dados.item_titulo, usuario_nome: dados.doador_nome }
+                );
+            });
+        }).catch(err => console.error('[notify] Erro ao buscar recusados:', err.message));
 
         return res.status(200).json({
             mensagem: 'Interessado escolhido com sucesso. Item reservado!',
