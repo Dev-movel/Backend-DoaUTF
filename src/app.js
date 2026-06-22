@@ -10,6 +10,7 @@ const categoriaRoutes = require('./routes/categoriaRoutes');
 const solicitacaoRoutes = require('./routes/solicitacaoRoutes');
 const avaliacaoRoutes = require('./routes/avaliacaoRoutes');
 const notificacaoRoutes = require('./routes/notificacaoRoutes');
+const chatRoutes = require('./routes/chatRoutes');
 
 const app = express();
 
@@ -36,5 +37,6 @@ app.use('/categorias', categoriaRoutes);
 app.use('/solicitacoes', solicitacaoRoutes);
 app.use('/avaliacao', avaliacaoRoutes);
 app.use('/notificacoes', notificacaoRoutes);
+app.use('/chat', chatRoutes);
 
 module.exports = app;

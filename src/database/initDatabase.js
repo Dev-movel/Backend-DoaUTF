@@ -11,6 +11,7 @@ const solicitacao = require('./schemas/solicitacao');
 const agendamento = require('./schemas/agendamento');
 const agendamentoTrigger = require('./schemas/agendamentoTrigger');
 const notificacao = require('./schemas/notificacao');
+const mensagemChat = require('./schemas/mensagemChat');
 
 const initDatabase = async () => {
   try {
@@ -32,6 +33,7 @@ const initDatabase = async () => {
     await pool.query(agendamento);
     await pool.query(agendamentoTrigger);
     await pool.query(notificacao);
+    await pool.query(mensagemChat);
 
     console.log('🚀 Todas as tabelas foram criadas/verificadas');
 
