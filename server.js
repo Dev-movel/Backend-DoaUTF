@@ -9,6 +9,7 @@ const { initTransporter } = require('./src/config/mailer');
 const cron = require('node-cron');
 const pool = require('./src/config/db');
 const { notify } = require('./src/services/notificationService');
+const { initChatWs } = require('./src/websocket/chatWs');
 
 const start = async () => {
   await initDatabase();
@@ -61,9 +62,11 @@ const start = async () => {
     }
   });
 
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log(`🚀 Servidor rodando na porta ${PORT}`);
   });
+
+  initChatWs(server);
 };
 
 start();
