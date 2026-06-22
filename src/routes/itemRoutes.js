@@ -34,5 +34,6 @@ router.delete('/:id', authMiddleware, itemController.removerItem);
 router.get('/:id/solicitacoes', authMiddleware, solicitacaoController.solicitacoesDoItem);
 
 router.use('/:id/agendamento', agendamentoRoutes);
+router.delete('/admin/itens/:id', authMiddleware, itemController.removerItemAdmin); 
 
 module.exports = router;
