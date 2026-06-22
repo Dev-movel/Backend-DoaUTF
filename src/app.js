@@ -8,6 +8,7 @@ const authRoutes = require('./routes/authRoutes');
 const itemRoutes = require('./routes/itemRoutes');
 const categoriaRoutes = require('./routes/categoriaRoutes');
 const solicitacaoRoutes = require('./routes/solicitacaoRoutes');
+const avaliacaoRoutes = require('./routes/avaliacaoRoutes');
 const notificacaoRoutes = require('./routes/notificacaoRoutes');
 
 const app = express();
@@ -33,6 +34,7 @@ app.use('/usuarios', usuarioRoutes);
 app.use('/itens', itemRoutes);
 app.use('/categorias', categoriaRoutes);
 app.use('/solicitacoes', solicitacaoRoutes);
+app.use('/avaliacao', avaliacaoRoutes);
 app.use('/notificacoes', notificacaoRoutes);
 
 module.exports = app;
