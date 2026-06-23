@@ -282,7 +282,12 @@ const listarMeusAgendamentos = async (req, res) => {
         const result = await pool.query(
             `SELECT a.id, a.item_id, a.doador_id, a.receptor_id, a.data_hora, a.status, a.created_at,
                     i.titulo AS item_titulo, i.local_retirada AS item_localizacao,
-                    p_doador.nome AS doador_nome, p_receptor.nome AS receptor_nome
+                    p_doador.nome AS doador_nome, p_receptor.nome AS receptor_nome,
+                    COALESCE(
+                        (SELECT true FROM avaliacao av WHERE av.item_id = a.item_id AND av.avaliador_id = $1 LIMIT 1),
+                        false
+                        ) AS ja_avaliou,
+                        (NOW() - a.created_at > INTERVAL '7 days') AS prazo_expirado
              FROM agendamento a
              JOIN item i ON i.id = a.item_id
              LEFT JOIN pessoa p_doador ON p_doador.id = a.doador_id
@@ -304,6 +309,8 @@ const listarMeusAgendamentos = async (req, res) => {
             data_hora: row.data_hora,
             status: row.status,
             created_at: row.created_at,
+            ja_avaliou: row.ja_avaliou,
+            prazo_expirado: row.prazo_expirado
         }));
 
         return res.status(200).json(agendamentos);

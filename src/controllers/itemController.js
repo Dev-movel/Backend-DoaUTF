@@ -348,7 +348,7 @@ const listarItens = async (req, res) => {
 };
 
 const removerItem = async (req, res) => {
-    const pessoaId = req.user.sub;
+    const pessoaId = req.user.sub; 
     const { id } = req.params;
 
     try {
@@ -377,6 +377,41 @@ const removerItem = async (req, res) => {
     } catch (error) {
         console.error('Erro ao remover item:', error);
         res.status(500).json({ erro: 'Erro ao remover item' });
+    }
+};
+
+// ================= REMOVER ITEM DENUNCIADO (ADMIN) =================
+const removerItemAdmin = async (req, res) => {
+    const { id } = req.params; // ID do item vindo da rota
+
+    try {
+        // 1. Verificar se o item existe no banco
+        const itemResult = await pool.query(
+            'SELECT id FROM item WHERE id = $1',
+            [id]
+        );
+
+        if (itemResult.rowCount === 0) {
+            return res.status(404).json({ erro: 'Item não encontrado' });
+        }
+
+        // 2. Buscar e apagar os arquivos físicos de imagem do servidor de arquivos (uploads/)
+        const imagensResult = await pool.query(
+            'SELECT caminho FROM item_imagem WHERE item_id = $1',
+            [id]
+        );
+        imagensResult.rows.forEach((img) => removerArquivo(img.caminho));
+
+        // 3. Remover primeiro as denúncias atreladas a este item para evitar erro de Foreign Key
+        await pool.query('DELETE FROM item_denuncia WHERE item_id = $1', [id]);
+
+        // 4. Remover o item da tabela principal (suas imagens na tabela item_imagem devem cair por CASCADE)
+        await pool.query('DELETE FROM item WHERE id = $1', [id]);
+
+        return res.status(200).json({ mensagem: 'O item denunciado foi removido com sucesso pelo administrador.' });
+    } catch (error) {
+        console.error('Erro ao remover item pelo admin:', error);
+        res.status(500).json({ erro: 'Erro interno ao remover item denunciado.' });
     }
 };
 
@@ -428,6 +463,7 @@ module.exports = {
     buscarItem, 
     editarItem, 
     removerItem, 
+    removerItemAdmin, // Exportado aqui!
     listarItensAtivosAdmin,
     LOCAIS_RETIRADA, 
     ESTADOS_CONSERVACAO 

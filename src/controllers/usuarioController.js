@@ -230,7 +230,15 @@ const getMyDonations = async (req, res) => {
                WHERE a.item_id = i.id AND a.status IN ('pendente', 'confirmado')
                ORDER BY a.id DESC
                LIMIT 1
-             ) AS agendamento_ativo
+             ) AS agendamento_ativo,
+             COALESCE(
+               (SELECT true FROM avaliacao av WHERE av.item_id = i.id AND av.avaliador_id = $1 LIMIT 1),
+               false
+             ) AS ja_avaliou,
+             COALESCE(
+               (SELECT NOW() - a.created_at > INTERVAL '7 days' FROM agendamento a WHERE a.item_id = i.id ORDER BY a.id DESC LIMIT 1),
+               false
+             ) AS prazo_expirado
       FROM item i
       WHERE i.pessoa_id = $1
     `;
@@ -264,7 +272,15 @@ const getReceivedDonations = async (req, res) => {
                 (SELECT caminho FROM item_imagem WHERE item_id = i.id ORDER BY id LIMIT 1),
                 NULL
               ) AS foto_url,
-              i.status
+              i.status,
+              COALESCE(
+                (SELECT true FROM avaliacao av WHERE av.item_id = i.id AND av.avaliador_id = $1 LIMIT 1),
+                false
+              ) AS ja_avaliou,
+              COALESCE(
+               (SELECT NOW() - a.created_at > INTERVAL '7 days' FROM agendamento a WHERE a.item_id = i.id ORDER BY a.id DESC LIMIT 1),
+               false
+              ) AS prazo_expirado
        FROM item i
        JOIN solicitacao s ON s.item_id = i.id
        WHERE s.solicitante_pessoa_id = $1 AND s.status = 'aceito'

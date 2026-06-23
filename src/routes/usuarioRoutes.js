@@ -3,7 +3,7 @@ const router = express.Router();
 const usuarioController = require('../controllers/usuarioController');
 const agendamentoController = require('../controllers/agendamentoController');
 const authMiddleware = require('../middlewares/authMiddleware');
-
+const denunciaController = require('../controllers/denunciaController');
 /**
  * @swagger
  * /usuarios:
@@ -248,4 +248,6 @@ router.patch('/:id', authMiddleware, usuarioController.atualizarUsuario);
  *         description: Usuário não encontrado
  */
 router.patch('/:id/denunciar', authMiddleware, usuarioController.denunciarUsuario);
+router.post('/denunciar-post', authMiddleware, denunciaController.denunciarPost);
+router.get('/denuncias-posts', authMiddleware, denunciaController.listarPostsDenunciados);
 module.exports = router;
