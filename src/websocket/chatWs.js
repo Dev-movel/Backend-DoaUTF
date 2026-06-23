@@ -2,6 +2,7 @@ const { WebSocketServer } = require('ws');
 const url = require('url');
 const jwt = require('jsonwebtoken');
 const pool = require('../config/db');
+const { notify } = require('../services/notificationService');
 
 // Mapa: solicitacaoId -> Set de { ws, pessoaId }
 const salas = new Map();
@@ -71,7 +72,12 @@ function initChatWs(server) {
             }
 
             wss.handleUpgrade(req, socket, head, (ws) => {
-                wss.emit('connection', ws, req, { solicitacaoId, pessoaId });
+                wss.emit('connection', ws, req, {
+                    solicitacaoId,
+                    pessoaId,
+                    solicitantePessoaId: solicitante_pessoa_id,
+                    doadorId: doador_id,
+                });
             });
         } catch (err) {
             console.error('[ChatWS] Erro na autenticação do upgrade:', err.message);
@@ -80,7 +86,7 @@ function initChatWs(server) {
         }
     });
 
-    wss.on('connection', (ws, _req, { solicitacaoId, pessoaId }) => {
+    wss.on('connection', (ws, _req, { solicitacaoId, pessoaId, solicitantePessoaId, doadorId }) => {
         if (!salas.has(solicitacaoId)) {
             salas.set(solicitacaoId, new Set());
         }
@@ -113,6 +119,24 @@ function initChatWs(server) {
                         c.ws.send(mensagem);
                     }
                 }
+
+                // ── Notifica o destinatário, mesmo que ele não esteja na sala ──
+                const destinatarioId =
+                    Number(pessoaId) === Number(solicitantePessoaId) ? doadorId : solicitantePessoaId;
+
+                // Só cria notificação se o destinatário não estiver com o chat aberto agora
+                const destinatarioConectado = [...sala].some(
+                    (c) => Number(c.pessoaId) === Number(destinatarioId) && c.ws.readyState === c.ws.OPEN
+                );
+
+                if (!destinatarioConectado) {
+                    notificarNovaMensagem({
+                        destinatarioId,
+                        remetenteId: pessoaId,
+                        solicitacaoId,
+                        conteudo: conteudo.trim(),
+                    });
+                }
             } catch (err) {
                 console.error('[ChatWS] Erro ao salvar mensagem:', err.message);
             }
@@ -125,6 +149,33 @@ function initChatWs(server) {
             }
         });
     });
+}
+
+async function notificarNovaMensagem({ destinatarioId, remetenteId, solicitacaoId, conteudo }) {
+    try {
+        const infoRes = await pool.query(
+            `SELECT p.nome AS remetente_nome, i.titulo AS item_titulo
+             FROM solicitacao s
+             JOIN item i ON i.id = s.item_id
+             JOIN pessoa p ON p.id = $2
+             WHERE s.id = $1`,
+            [solicitacaoId, remetenteId]
+        );
+
+        if (infoRes.rowCount === 0) return;
+
+        const { remetente_nome, item_titulo } = infoRes.rows[0];
+        const mensagem = `${remetente_nome}: ${conteudo}`;
+
+        await notify(destinatarioId, 'nova_mensagem', mensagem, {
+            solicitacao_id: solicitacaoId,
+            remetente_id: remetenteId,
+            usuario_nome: remetente_nome,
+            item_titulo,
+        });
+    } catch (err) {
+        console.error('[ChatWS] Erro ao notificar nova mensagem:', err.message);
+    }
 }
 
 module.exports = { initChatWs };
