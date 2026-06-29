@@ -49,7 +49,33 @@ const listarPostsDenunciados = async (req, res) => {
   }
 };
 
+// ================= ARQUIVAR/REMOVER DENÚNCIA (ADMIN) =================
+const removerDenuncia = async (req, res) => {
+  const { itemId } = req.params;
+
+  if (!itemId) {
+    return res.status(400).json({ erro: 'ID do item não fornecido.' });
+  }
+
+  try {
+    const result = await pool.query(
+      'DELETE FROM item_denuncia WHERE item_id = $1',
+      [itemId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ erro: 'Nenhuma denúncia encontrada para este post.' });
+    }
+
+    res.status(200).json({ mensagem: 'Denúncias removidas com sucesso! O post foi mantido.' });
+  } catch (error) {
+    console.error('Erro ao remover denúncia:', error);
+    res.status(500).json({ erro: 'Erro ao tentar remover a denúncia do banco de dados.' });
+  }
+};
+
 module.exports = {
   denunciarPost,
-  listarPostsDenunciados
+  listarPostsDenunciados,
+  removerDenuncia
 };
