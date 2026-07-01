@@ -1,5 +1,6 @@
 const pool = require('../config/db');
 const { notify } = require('../services/notificationService');
+const { adjustPoints } = require('../services/pontosService');
 
 const getUsuarioLogadoId = (req) => req.user.sub || req.user.id;
 
@@ -224,6 +225,8 @@ const concluirAgendamento = async (req, res) => {
             'SELECT * FROM agendamento WHERE id = $1',
             [agendamento.id]
         );
+
+        await adjustPoints(client, agendamento.doador_id, 10, `doacao:item:${id}`);
 
         await client.query('COMMIT');
 
