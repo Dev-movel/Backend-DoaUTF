@@ -11,6 +11,9 @@ const solicitacaoRoutes = require('./routes/solicitacaoRoutes');
 const avaliacaoRoutes = require('./routes/avaliacaoRoutes');
 const notificacaoRoutes = require('./routes/notificacaoRoutes');
 const chatRoutes = require('./routes/chatRoutes');
+const pontosRoutes = require('./routes/pontosRoutes');
+const agendamentoController = require('./controllers/agendamentoController');
+const authMiddleware = require('./middlewares/authMiddleware');
 
 const app = express();
 
@@ -38,5 +41,7 @@ app.use('/solicitacoes', solicitacaoRoutes);
 app.use('/avaliacao', avaliacaoRoutes);
 app.use('/notificacoes', notificacaoRoutes);
 app.use('/chat', chatRoutes);
+app.use('/pontos', pontosRoutes);
+app.get('/agendamentos/meus', authMiddleware, agendamentoController.listarMeusAgendamentos);
 
 module.exports = app;

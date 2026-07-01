@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { adjustPoints, DELTA_POR_NOTA } = require('../services/pontosService');
 
 const PRAZO_AVALIACAO_DIAS = 7;
 
@@ -90,18 +91,35 @@ const criarAvaliacao = async (req, res) => {
                 erro: 'Você já avaliou esta doação. A avaliação não pode ser editada.',
             });
         }
-        const result = await pool.query(
-            `INSERT INTO avaliacao (item_id, avaliador_id, avaliado_id, nota, comentario)
-             VALUES ($1, $2, $3, $4, $5)
-             RETURNING id, item_id, avaliador_id, avaliado_id, nota, comentario, created_at`,
-            [itemId, avaliadorId, avaliado_id, nota, comentarioTrimmed]
-        );
- 
+        const client = await pool.connect();
+        let avaliacaoRow;
+        try {
+            await client.query('BEGIN');
+
+            const result = await client.query(
+                `INSERT INTO avaliacao (item_id, avaliador_id, avaliado_id, nota, comentario)
+                 VALUES ($1, $2, $3, $4, $5)
+                 RETURNING id, item_id, avaliador_id, avaliado_id, nota, comentario, created_at`,
+                [itemId, avaliadorId, avaliado_id, nota, comentarioTrimmed]
+            );
+            avaliacaoRow = result.rows[0];
+
+            const delta = DELTA_POR_NOTA[nota];
+            await adjustPoints(client, avaliado_id, delta, `avaliacao:item:${itemId}`);
+
+            await client.query('COMMIT');
+        } catch (txErr) {
+            await client.query('ROLLBACK');
+            throw txErr;
+        } finally {
+            client.release();
+        }
+
         console.log(`Avaliação criada — avaliador: ${avaliadorId}, avaliado: ${avaliado_id}, nota: ${nota}`);
- 
+
         return res.status(201).json({
             mensagem: 'Avaliação enviada com sucesso.',
-            avaliacao: result.rows[0],
+            avaliacao: avaliacaoRow,
         });
     } catch (error) {
         console.error('Erro em criarAvaliacao:', error);

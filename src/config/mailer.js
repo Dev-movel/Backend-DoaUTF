@@ -112,4 +112,61 @@ const sendVerificationCode = async (to, code) => {
     return info;
 };
 
-module.exports = { sendPasswordReset, sendVerificationCode, initTransporter };
+// ── Envio de código de resgate de prêmio ────────────────────────────────────
+
+/**
+ * Envia e-mail com o código de resgate de prêmio.
+ *
+ * @param {string} to - E-mail do destinatário
+ * @param {string} nomeUsuario - Nome do usuário
+ * @param {string} premioNome - Nome do prêmio resgatado
+ * @param {string} codigo - Código no formato DOA-XXXXX
+ * @param {number} pontosGastos - Pontos debitados
+ */
+const sendResgateCodigo = async (to, nomeUsuario, premioNome, codigo, pontosGastos) => {
+    const info = await getTransporter().sendMail({
+        from: process.env.MAIL_FROM || 'DoaUTF <seugmail@gmail.com>',
+        to,
+        subject: `Resgate confirmado: ${premioNome} — DoaUTF`,
+        text: `Olá, ${nomeUsuario}!\n\nSeu resgate foi confirmado.\n\nPrêmio: ${premioNome}\nPontos gastos: ${pontosGastos}\nCódigo: ${codigo}\n\nPara retirar seu prêmio, apresente este código no Bloco E, sala 105.\n\nEquipe DoaUTF`,
+        html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #2D7A1F;">Resgate Confirmado!</h2>
+                <p>Olá, <strong>${nomeUsuario}</strong>!</p>
+                <p>Seu resgate foi processado com sucesso:</p>
+                <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+                    <tr>
+                        <td style="padding: 8px; color: #666;">Prêmio:</td>
+                        <td style="padding: 8px; font-weight: bold;">${premioNome}</td>
+                    </tr>
+                    <tr style="background: #f9f9f9;">
+                        <td style="padding: 8px; color: #666;">Pontos gastos:</td>
+                        <td style="padding: 8px; font-weight: bold;">${pontosGastos} pts</td>
+                    </tr>
+                </table>
+                <p>Seu código de retirada:</p>
+                <div style="text-align: center; margin: 24px 0;">
+                    <span style="font-size: 28px; font-weight: bold; letter-spacing: 4px; color: #2D7A1F; background: #E8F5E2; padding: 14px 28px; border-radius: 10px; display: inline-block;">
+                        ${codigo}
+                    </span>
+                </div>
+                <p style="color: #333;">
+                    Apresente este código para retirar seu prêmio:<br>
+                    <strong>📍 Bloco E, sala 105</strong>
+                </p>
+                <p style="color: #999; font-size: 12px; margin-top: 30px;">
+                    Guarde este e-mail — o código é necessário para a retirada.
+                </p>
+                <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
+                <p style="color: #999; font-size: 12px; text-align: center;">
+                    © 2026 DoaUTF. Todos os direitos reservados.
+                </p>
+            </div>
+        `,
+    });
+
+    console.log(`E-mail de resgate enviado para ${to} — ID: ${info.messageId}`);
+    return info;
+};
+
+module.exports = { sendPasswordReset, sendVerificationCode, sendResgateCodigo, initTransporter };
