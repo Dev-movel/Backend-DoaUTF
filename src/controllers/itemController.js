@@ -266,6 +266,13 @@ const listarItens = async (req, res) => {
         }
     }
 
+    // O feed nunca exibe os itens do próprio usuário logado.
+    // (deslogado não tem id -> filtro não é aplicado, mostra tudo exceto doados)
+    if (usuarioLogadoId) {
+        params.push(usuarioLogadoId);
+        condicoes.push(`i.pessoa_id <> $${params.length}`);
+    }
+
     if (status !== 'todos') {
         if (status === 'disponivel' && usuarioLogadoId) {
             params.push(usuarioLogadoId);
@@ -273,17 +280,15 @@ const listarItens = async (req, res) => {
             condicoes.push(`(
                 i.status = 'disponivel'
                 OR (
-                    i.status IN ('reservado')
-                    AND (
-                        i.pessoa_id = ${userParam}
-                        OR EXISTS(
-                            SELECT 1 FROM solicitacao s WHERE s.item_id = i.id AND s.solicitante_pessoa_id = ${userParam}
-                        )
+                    i.status = 'reservado'
+                    AND EXISTS(
+                        SELECT 1 FROM solicitacao s WHERE s.item_id = i.id AND s.solicitante_pessoa_id = ${userParam}
                     )
                 )
             )`);
         } else {
-            condicoes.push(`i.status = '${status}'`);
+            params.push(status);
+            condicoes.push(`i.status = $${params.length}`);
         }
     }
 
