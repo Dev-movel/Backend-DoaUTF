@@ -14,8 +14,11 @@ const chatRoutes = require('./routes/chatRoutes');
 const pontosRoutes = require('./routes/pontosRoutes');
 const agendamentoController = require('./controllers/agendamentoController');
 const authMiddleware = require('./middlewares/authMiddleware');
+const { initTransporter } = require('./config/mailer');
 
 const app = express();
+
+initTransporter().catch(err => console.error('Falha ao inicializar mailer:', err.message));
 
 // Middlewares
 app.use(cors());

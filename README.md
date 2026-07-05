@@ -1,77 +1,152 @@
-Markdown
+# Backend — DoaUTF
 
-# 🚀 API: Node.js + PostgreSQL + Docker
+API RESTful para o aplicativo DoaUTF, plataforma de doação entre alunos da UTFPR.
 
-Bem-vindo ao repositório da nossa primeira API RESTful modular! Este projeto foi desenvolvido para demonstrar na prática como construir um servidor backend estruturado, conectar a um banco de dados relacional e documentar os *endpoints* de forma profissional.
+## Tecnologias
 
-## 🛠️ Tecnologias Utilizadas
-* **Node.js** & **Express.js**: Para o servidor web e roteamento.
-* **PostgreSQL**: Banco de dados relacional.
-* **Docker & Docker Compose**: Para orquestração da infraestrutura (banco de dados e pgAdmin).
-* **Swagger (OpenAPI)**: Para documentação interativa e testes da API.
-* **pg**: Driver nativo para comunicação entre Node.js e PostgreSQL.
-
----
-
-## 📋 Pré-requisitos
-Antes de começar, certifique-se de ter as seguintes ferramentas instaladas na sua máquina:
-1. [Git](https://git-scm.com/)
-2. [Node.js](https://nodejs.org/) (Versão 18 ou superior)
-3. [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Rodando em segundo plano)
+- **Node.js** + **Express.js**
+- **PostgreSQL** (via Docker)
+- **JWT** para autenticação
+- **Nodemailer** (Gmail SMTP) para envio de e-mails
+- **Swagger** para documentação interativa
+- **WebSocket** para chat em tempo real
 
 ---
 
-## 💻 Como Rodar o Projeto Passo a Passo
+## Pré-requisitos
 
-### Passo 1: Clonar o Repositório
-Abra o seu terminal e clone este repositório para a sua máquina local:
+- [Node.js](https://nodejs.org/) v18+
+- [Docker](https://www.docker.com/products/docker-desktop/) rodando em segundo plano
+- Conta Google com **senha de app** habilitada (para envio de e-mails)
+
+---
+
+## Configuração
+
+### 1. Clonar o repositório
+
 ```bash
-git clone https://github.com/Dev-movel/Backend-DoaAi.git
+git clone https://github.com/Dev-movel/Backend-DoaUTF.git
+cd Backend-DoaUTF
 ```
 
-### Passo 2: Subir a Infraestrutura (Banco de Dados)
-Não precisamos instalar o PostgreSQL no computador! Vamos usar o Docker para baixar e rodar um contêiner pronto com o banco de dados e a interface do pgAdmin. No terminal, execute:
-
-```bash
-docker compose up -d
-```
-A flag -d significa "detached", liberando o seu terminal para o próximo passo. O Postgres estará rodando na porta 5432.
-
-### Passo 3: Instalar as Dependências do Node.js
-Agora precisamos baixar as bibliotecas de código (como o Express e o driver do Postgres) que a nossa API utiliza. Execute:
+### 2. Instalar dependências
 
 ```bash
 npm install
 ```
 
-### Passo 4: Ligar o Servidor Backend
-Com o banco rodando e as dependências instaladas, inicie a API. O nosso código já possui uma rotina de inicialização automática: ao ligar, ele verificará o banco de dados e criará a tabela usuarios sozinho caso ela não exista.
+### 3. Criar o arquivo `.env`
+
+Crie um arquivo `.env` na raiz do projeto com as seguintes variáveis:
+
+```env
+# Servidor
+PORT=3000
+
+# Banco de dados (deve bater com o docker-compose.yml)
+DB_USER=vic
+DB_PASS=admin
+DB_NAME=doautf_db
+DB_HOST=localhost
+DB_PORT=6123
+
+# JWT
+JWT_SECRET=sua_chave_secreta_aqui
+JWT_REFRESH_SECRET=sua_chave_refresh_aqui
+
+# E-mail (Gmail SMTP)
+MAIL_USER=seu_email@gmail.com
+MAIL_PASS=sua_senha_de_app_google   # Não é a senha normal — veja abaixo
+MAIL_FROM=DoaUTF <seu_email@gmail.com>
+
+# URL do frontend (usada nos links enviados por e-mail)
+# Atualize com a porta atual do frontend sempre que reiniciá-lo
+FRONTEND_URL=http://localhost:PORTA_DO_FRONTEND
+```
+
+> **Como gerar a senha de app do Google:**
+> Acesse [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords), crie uma senha de app para "Email" e cole em `MAIL_PASS`.
+
+### 4. Subir o banco de dados
+
+```bash
+docker compose up -d
+```
+
+Isso sobe o PostgreSQL na porta `6123` e o pgAdmin na porta `6124`.
+
+- **pgAdmin:** http://localhost:6124 — login: `admin@admin.com` / senha: `admin`
+- Servidor no pgAdmin: host `db`, porta `5432`, usuário `vic`, senha `admin`
+
+---
+
+## Rodando o projeto
 
 ```bash
 node --watch server.js
 ```
-A flag --watch faz com que o servidor reinicie automaticamente toda vez que você salvar uma alteração no código.
 
-## 🧪 Como Testar a API (Swagger)
+Na inicialização, o servidor automaticamente:
+1. Conecta ao banco de dados
+2. Cria todas as tabelas (se não existirem)
+3. Inicializa o sistema de e-mail (Gmail SMTP)
+4. Inicia o cron job de expiração de agendamentos (a cada hora)
+5. Inicia o servidor WebSocket para chat
 
-A nossa API não tem uma interface visual tradicional (Frontend), mas implementamos o Swagger para facilitar os testes!
+Acesse a documentação interativa em: **http://localhost:3000/api-docs**
 
-Abra o seu navegador e acesse: http://localhost:3000/api-docs
+---
 
-Para Cadastrar um Usuário (POST):
+## Migrations manuais
 
-Clique na rota verde POST /usuarios.
+Algumas tabelas exigem migration manual (caso não sejam criadas automaticamente pelo `initDatabase`):
 
-Clique no botão "Try it out".
+```bash
+psql -U vic -h localhost -p 6123 -d doautf_db -f src/migrations/001_create_auth.sql
+psql -U vic -h localhost -p 6123 -d doautf_db -f src/migrations/002_create_avaliacoes.sql
+```
 
-Altere os valores de "nome" e "email" no campo de texto JSON.
+Isso cria/atualiza as tabelas: `email_verification`, `refresh_token`, `password_reset_token` e índices relacionados.
 
-Clique em "Execute". Role para baixo e verifique se o Server response retornou código 201.
+---
 
-Para Listar os Usuários (GET):
+## Seed (dados iniciais)
 
-Clique na rota azul GET /usuarios.
+Para popular o banco com dados de exemplo:
 
-Clique no botão "Try it out" e depois em "Execute".
+```bash
+npm run seed
+```
 
-Você verá a lista de usuários salvos vindo diretamente do banco de dados!
+---
+
+## Estrutura do projeto
+
+```
+src/
+├── app.js                  # Configuração do Express e rotas
+├── config/
+│   ├── db.js               # Pool de conexão com o PostgreSQL
+│   ├── mailer.js           # Configuração do Gmail SMTP (nodemailer)
+│   └── swagger.js          # Configuração do Swagger
+├── controllers/            # Lógica de negócio dos endpoints
+├── database/
+│   ├── initDatabase.js     # Criação automática das tabelas no startup
+│   ├── schemas/            # Definições SQL de cada tabela
+│   └── seed.js             # Script de dados iniciais
+├── middlewares/            # Auth, upload, etc.
+├── migrations/             # SQLs de alterações no banco
+├── routes/                 # Definição das rotas da API
+├── services/               # Serviços (notificações, etc.)
+├── utils/                  # Utilitários gerais
+└── websocket/              # Chat em tempo real (WebSocket)
+server.js                   # Entry point — inicializa tudo
+```
+
+---
+
+## Observações
+
+- O `FRONTEND_URL` no `.env` precisa ser atualizado sempre que o frontend mudar de porta (ex: ao reiniciar o servidor de desenvolvimento). Ele é usado nos links enviados por e-mail (redefinição de senha).
+- O sistema de e-mail falha silenciosamente se `MAIL_USER` ou `MAIL_PASS` estiverem incorretos — verifique os logs do servidor na inicialização pela mensagem `✅ Gmail SMTP pronto para envio`.
