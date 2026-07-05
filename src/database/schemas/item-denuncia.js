@@ -1,5 +1,5 @@
 module.exports = `
-CREATE TABLE item_denuncia (
+CREATE TABLE IF NOT EXISTS item_denuncia (
     id SERIAL PRIMARY KEY,
     item_id INT NOT NULL REFERENCES item(id) ON DELETE CASCADE,
     denunciante_pessoa_id INT NOT NULL REFERENCES pessoa(id) ON DELETE CASCADE,
